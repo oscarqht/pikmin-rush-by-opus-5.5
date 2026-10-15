@@ -1,8 +1,8 @@
-# Bulborb Rush: A Pikmin Tower Defense
+# Bulborb Rush: A Pikmin Tower Defense (React Edition)
 
 A Kingdom Rush–style tower defense game set in the world of Pikmin, with the roles reversed. You command the native creatures (Bulborbs, Breadbugs, Blowhogs, Groinks, Cannon Beetles and more). The Pikmin and their captains (Olimar, Louie, Alph, Brittany, Charlie and the President) are the invaders.
 
-All art and audio are generated procedurally in JavaScript at runtime (Canvas 2D vector drawing and Web Audio synthesis). The game uses no image or sound files.
+All art and audio are generated procedurally at runtime with Canvas 2D vector drawing and Web Audio synthesis. The application is built with React, TypeScript, and Vite.
 
 ## Screenshots
 
@@ -20,49 +20,33 @@ All art and audio are generated procedurally in JavaScript at runtime (Canvas 2D
 | **Awakening Wood** | **Perplexing Pool** |
 | ![Awakening Wood](screenshots/04-gameplay-wood.png) | ![Perplexing Pool](screenshots/05-gameplay-pool.png) |
 
-### Enemies: Pikmin and captains
+## Development & Run
 
-Each of the 9 Pikmin types has leaf, bud and flower versions, drawn side-on, from the front and from behind.
+This project runs on Node.js with Vite:
 
-![Pikmin](screenshots/07-enemies-pikmin.png)
+```bash
+# Install dependencies
+npm install
 
-![Pikmin animation frames](screenshots/08-enemies-pikmin-animation.png)
+# Run the development server (port 3000)
+npm run dev
 
-![Captains](screenshots/09-enemies-captains.png)
+# Build for production
+npm run build
+```
 
-### Towers: native creatures
+## Features
 
-![Tower creatures](screenshots/10-towers-creatures.png)
-
-![Bulborb family, Breadbug and Snagret](screenshots/11-towers-bulborbs-breadbug-snagret.png)
-
-![Tower platforms and dens](screenshots/12-towers-platforms-dens.png)
-
-### Props
-
-![Props](screenshots/13-props.png)
-
-## Run
-
-Open `index.html` in a browser. It uses plain `<script>` tags with no build step, so it also works straight from `file://`.
-You can also serve the folder: `python3 -m http.server` → http://localhost:8000
-
-- `assets.html` is a gallery of every generated sprite, prop, icon and map. It has a "Download all as PNG" button.
-- `node tools/sim.js [casual|normal|veteran] [smart|mixed]` runs a headless balance simulation with a bot player.
-
-## Contents
-
-- **4 levels** on a world map, each with its own theme: Tranquil Grove (meadow), Awakening Wood (autumn forest, 2 trails), Perplexing Pool (ponds, Koppaites), Twilight Hollow (night, fireflies, President boss). They have 10–15 waves each. Stars are saved in localStorage, and there are three difficulty settings.
-- **4 tower families** with 3 upgrade tiers and 2 elite branches each:
-  - Gatling Groink (ranged) → Man-at-Legs (gatling bursts) / Swooping Snitchbug (snatches a Pikmin and drops it back down the trail)
-  - Bulborb Den (blockers) → Spotty Bulbear Lair (tanks) / Breadbug Burrow (drags Pikmin into the burrow)
-  - Fiery Blowhog (magic, burn) → Withering Blowhog (slows, withers flowers back to leaves) / Puffy Blowhog (gusts that push enemies back)
-  - Cannon Beetle Larva (artillery) → Decorated Cannon Beetle (rolling boulder) / Yellow Wollywog Pond (belly-flop stun)
-- **Hero:** Emperor Bulblax. You can move him around; he has Tongue Lash and Earthquake and levels up to 5.
-- **Spells:** Snagret Strike and Bulborb Reinforcements.
-- **15 enemy types:** 9 Pikmin types (Red, Yellow, Blue, Purple, White, Rock, Winged, Ice, Glow), each in leaf, bud and flower tiers, plus 6 captains with special abilities (whistle buffs, snack-heal, plucking sprouts, juice heal, armour, boss summons).
-- Also included: call waves early for bonus pokos, Piklopedia almanac, "new enemy" cards, pause menu, and synthesized music and SFX.
-
-**Controls:** click plots to build and click towers to upgrade or sell. Space pause · F speed · 1/2 spells · H hero · N next wave · M mute · Esc cancel.
-
-Pikmin is a Nintendo trademark; this is a non-commercial fan project. Creature designs were drawn from public descriptions (Pikipedia / Pikmin Wiki); no game assets were copied.
+- **React Architecture**: Modular components for screens (Title, World Map, Game canvas view) and modals (Briefing, Piklopedia Almanac, Pause, Results, and About).
+- **Procedural Canvas 2D Engine**: All creatures, animations, environments, shadows, effects, and map geography are procedurally rendered without external image files.
+- **Synthesized Audio Engine**: Real-time generative chiptune music for themes (Title, Map, Meadow, Forest, Pool, Twilight) and procedural sound effects via Web Audio API.
+- **4 Levels**:
+  - Tranquil Grove (Meadow)
+  - Awakening Wood (Autumn Forest, dual trails)
+  - Perplexing Pool (Water ponds, Koppaites)
+  - Twilight Hollow (Night, Glow Pikmin, President boss battle)
+- **Towers & Upgrades**: 4 tower families (Gatling Groink, Bulborb Den, Fiery Blowhog, Cannon Beetle Larva) with 3 tiers and elite tier-4 specializations.
+- **Emperor Bulblax Hero**: Moveable hero unit with ground stomps, group tongue attacks, leveling, and respawns.
+- **Special Spells**: Snagret Strike (summoning Burrowing Snagret) and Bulborb Reinforcements.
+- **Piklopedia (Almanac)**: Interactive compendium with live animated previews and complete creature/invader combat statistics.
+- **Persistent Progress**: Star ratings, difficulty selection, and seen invaders saved in localStorage.

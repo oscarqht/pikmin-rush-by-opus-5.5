@@ -1,0 +1,7 @@
+{
+  "name": "Bulborb Rush — A Pikmin Tower Defense",
+  "description": "A Pikmin-themed tower defense tribute where you command native creatures to defend burrows against invading Pikmin and captains.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

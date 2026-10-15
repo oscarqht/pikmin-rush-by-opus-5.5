@@ -1,153 +1,18 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Bulborb Rush — A Pikmin Tower Defense</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css" />
-</head>
-<body>
-  <div id="stage">
-    <canvas id="game"></canvas>
-
-    <!-- TITLE -->
-    <section id="screen-title" class="screen">
-      <div class="title-wrap">
-        <div class="logo">
-          <div class="logo-top">BULBORB</div>
-          <div class="logo-bottom">RUSH</div>
-          <div class="logo-sub">A Pikmin Tower Defense</div>
-        </div>
-        <div class="title-buttons">
-          <button id="btn-play" class="btn big green">Start Adventure</button>
-          <button id="btn-almanac" class="btn">Piklopedia</button>
-          <button id="btn-about" class="btn small">About</button>
-        </div>
-      </div>
-      <div class="title-hint">The Pikmin are coming to raid the creature kingdom. Defend the burrow with Bulborbs, Blowhogs and friends!</div>
-    </section>
-
-    <!-- WORLD MAP -->
-    <section id="screen-map" class="screen">
-      <div id="map-nodes"></div>
-      <div class="map-bar">
-        <button id="map-back" class="btn small">◀ Title</button>
-        <div class="map-stars"><span class="star">★</span> <span id="map-stars">0/12</span></div>
-        <button id="map-almanac" class="btn small">Piklopedia</button>
-      </div>
-    </section>
-
-    <!-- GAME (canvas only) -->
-    <section id="screen-game" class="screen"></section>
-
-    <!-- BRIEFING -->
-    <div id="modal-brief" class="modal">
-      <div class="panel wood brief">
-        <button id="brief-close" class="x">✕</button>
-        <h2 id="brief-title">Level</h2>
-        <div id="brief-sub" class="sub"></div>
-        <div class="brief-body">
-          <div id="brief-thumb"></div>
-          <div class="brief-text">
-            <p id="brief-desc"></p>
-            <div id="brief-meta" class="meta"></div>
-            <div class="label">Invaders</div>
-            <div id="brief-enemies"></div>
-            <div id="brief-stars" class="stars"></div>
-          </div>
-        </div>
-        <div class="brief-foot">
-          <div id="brief-diff">
-            <button data-d="casual">Casual</button>
-            <button data-d="normal" class="sel">Normal</button>
-            <button data-d="veteran">Veteran</button>
-          </div>
-          <button id="brief-go" class="btn big green">To Battle!</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ALMANAC -->
-    <div id="modal-almanac" class="modal">
-      <div class="panel parch almanac">
-        <button id="alm-close" class="x">✕</button>
-        <h2>Piklopedia</h2>
-        <div id="alm-tabs">
-          <button data-tab="creatures" class="sel">Creatures (yours)</button>
-          <button data-tab="invaders">Invaders</button>
-        </div>
-        <div class="alm-body">
-          <div id="alm-grid"></div>
-          <div id="alm-detail"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- PAUSE -->
-    <div id="modal-pause" class="modal">
-      <div class="panel wood pause">
-        <h2>Paused</h2>
-        <button id="pause-resume" class="btn green">Resume</button>
-        <div class="row">
-          <button id="pause-music" class="btn small">Music: On</button>
-          <button id="pause-sound" class="btn small">Sound: On</button>
-        </div>
-        <button id="pause-restart" class="btn">Restart</button>
-        <button id="pause-quit" class="btn red">Quit to Map</button>
-        <div class="keys">Space pause · F speed · 1/2 spells · H hero · N next wave · Esc cancel</div>
-      </div>
-    </div>
-
-    <!-- END -->
-    <div id="modal-end" class="modal">
-      <div class="panel wood end">
-        <div id="end-stars" class="end-stars"></div>
-        <h2 id="end-title">VICTORY!</h2>
-        <div id="end-sub" class="sub"></div>
-        <div id="end-stats"></div>
-        <div class="row">
-          <button id="end-retry" class="btn">Replay</button>
-          <button id="end-map" class="btn green">Continue</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ABOUT -->
-    <div id="modal-about" class="modal">
-      <div class="panel parch about">
-        <button id="about-close" class="x">✕</button>
-        <h2>About</h2>
-        <p><b>Bulborb Rush</b> is a fan-made tower defense tribute in the style of <i>Kingdom Rush</i>, set in the world of <i>Pikmin</i> — but with the roles reversed. You command the native creatures; the Pikmin and their captains are the invaders.</p>
-        <p>Every sprite, prop, map and sound in this game is generated procedurally in JavaScript at runtime (Canvas 2D + Web Audio). No external images or audio files are used.</p>
-        <p class="small">Pikmin and all related characters are trademarks of Nintendo. This is a non-commercial fan project.</p>
-        <h3>How to play</h3>
-        <ul>
-          <li>Click a dirt plot to build a creature. Click a creature to upgrade, evolve at tier 3, or sell it.</li>
-          <li>Press the flashing Onion flag to send the next wave early for bonus pokos.</li>
-          <li>Click the Emperor Bulblax (or his portrait), then click the ground to move him.</li>
-          <li>Snagret Strike (1) and Reinforcements (2) are your special powers.</li>
-        </ul>
-      </div>
-    </div>
-
-    <div id="loading"><div class="spinner"></div>Growing sprouts…</div>
-  </div>
-
-  <script src="js/core.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/art/art-core.js"></script>
-  <script src="js/art/art-enemies.js"></script>
-  <script src="js/art/art-creatures.js"></script>
-  <script src="js/art/art-world.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/levels.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/render.js"></script>
-  <script src="js/hud.js"></script>
-  <script src="js/screens.js"></script>
-  <script src="js/main.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Bulborb Rush — A Pikmin Tower Defense</title>
+    <meta name="description" content="A Pikmin-themed tower defense tribute where you command native creatures to defend burrows against invading Pikmin and captains." />
+    <meta property="og:title" content="Bulborb Rush — A Pikmin Tower Defense" />
+    <meta property="og:description" content="A Pikmin-themed tower defense tribute where you command native creatures to defend burrows against invading Pikmin and captains." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
