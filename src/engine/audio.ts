@@ -103,7 +103,7 @@ export const Audio = (PTD.Audio = {
   play(name: string) {
     if (!this.ctx || this.muted) return;
     const now = performance.now();
-    const gap: Record<string, number> = { pew: 45, hit: 40, pop: 60, boom: 80, fire: 70, die: 35, coin: 50, chomp: 90, bullet: 30 };
+    const gap: Record<string, number> = { pew: 45, hit: 40, pop: 60, boom: 80, fire: 70, die: 35, coin: 50, chomp: 90, bullet: 30, zap: 60, leaf: 80, bark: 200, erupt: 300 };
     const minGap = gap[name] || 0;
     if (minGap && this._last[name] && now - this._last[name] < minGap) return;
     this._last[name] = now;
@@ -220,6 +220,22 @@ export const Audio = (PTD.Audio = {
         this.tone(1047, 0.3, { type: 'triangle', vol: 0.14 });
         this.tone(1568, 0.4, { type: 'sine', vol: 0.08, delay: 0.05 });
         break;
+      case 'zap': // anode beetle chain lightning
+        this.noise(0.12, { freq: 3200, ftype: 'bandpass', q: 3, vol: 0.12 });
+        this.tone(1400 + r() * 300, 0.1, { type: 'sawtooth', slide: 300, vol: 0.05, filter: 4000 });
+        this.tone(60, 0.12, { type: 'square', vol: 0.05, filter: 400 });
+        break;
+      case 'leaf':
+        this.noise(0.25, { freq: 2600, fslide: 900, ftype: 'bandpass', q: 1.2, vol: 0.12 });
+        break;
+      case 'bark':
+        this.tone(520, 0.08, { type: 'square', slide: 380, vol: 0.09, filter: 1600 });
+        this.tone(560, 0.1, { type: 'square', slide: 400, vol: 0.09, filter: 1600, delay: 0.12 });
+        break;
+      case 'erupt':
+        this.tone(70, 0.6, { type: 'sawtooth', slide: 40, vol: 0.12, filter: 300 });
+        this.noise(0.7, { freq: 500, fslide: 1600, vol: 0.14 });
+        break;
       case 'bossroar':
         this.tone(90, 0.8, { type: 'sawtooth', slide: 60, vol: 0.18, filter: 500 });
         this.noise(0.8, { freq: 400, vol: 0.15 });
@@ -242,6 +258,10 @@ export const Audio = (PTD.Audio = {
       forest: { root: 57, scale: [0, 2, 3, 7, 8], bpm: 100, prog: [0, 3, 5, 4], bright: 0.8 },
       pool: { root: 62, scale: [0, 2, 4, 7, 9], bpm: 96, prog: [0, 4, 5, 3], bright: 0.9 },
       twilight: { root: 55, scale: [0, 2, 3, 7, 10], bpm: 92, prog: [0, 5, 3, 4], bright: 0.7 },
+      beach: { root: 64, scale: [0, 2, 4, 7, 9], bpm: 112, prog: [0, 4, 5, 3], bright: 1 },
+      tundra: { root: 59, scale: [0, 2, 4, 6, 9], bpm: 84, prog: [0, 3, 4, 5], bright: 0.85 },
+      volcanic: { root: 52, scale: [0, 1, 3, 7, 8], bpm: 118, prog: [0, 5, 6, 4], bright: 0.75 },
+      cave: { root: 50, scale: [0, 2, 3, 7, 10], bpm: 78, prog: [0, 5, 3, 6], bright: 0.6 },
     };
     const th = THEMES[theme] || THEMES.meadow;
     const ctx = this.ctx;

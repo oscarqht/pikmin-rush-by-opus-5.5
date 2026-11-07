@@ -108,7 +108,7 @@
       gold: 260,
       hpMul: 1,
       spots: 11,
-      mapPos: [250, 470],
+      mapPos: [230, 500],
       paths: [
         [[-60, 330], [90, 330], [200, 250], [330, 210], [460, 270], [500, 400], [430, 520], [520, 610], [690, 600], [780, 480], [730, 350], [800, 230], [950, 180], [1080, 250], [1100, 380], [1020, 470], [1090, 560], [1225, 560]],
       ],
@@ -136,7 +136,7 @@
       gold: 320,
       hpMul: 1.05,
       spots: 13,
-      mapPos: [520, 330],
+      mapPos: [430, 330],
       paths: [
         [[-60, 170], [100, 175], [230, 240], [360, 230], [470, 300], [560, 380], [680, 330], [800, 250], [930, 240], [1010, 330], [960, 440], [1040, 540], [1160, 520], [1225, 430]],
         [[-60, 560], [110, 555], [240, 480], [370, 500], [480, 450], [560, 380], [680, 330], [800, 250], [930, 240], [1010, 330], [960, 440], [1040, 540], [1160, 520], [1225, 430]],
@@ -167,7 +167,7 @@
       gold: 450,
       hpMul: 1.0,
       spots: 14,
-      mapPos: [820, 470],
+      mapPos: [650, 500],
       paths: [
         [[520, -60], [520, 80], [430, 170], [300, 170], [200, 250], [230, 370], [360, 420], [270, 510], [160, 520], [60, 470]],
         [[1340, 300], [1180, 300], [1080, 210], [940, 200], [860, 300], [910, 420], [790, 510], [620, 490], [480, 450], [360, 420], [270, 510], [160, 520], [60, 470]],
@@ -198,6 +198,7 @@
       id: 'hollow',
       name: 'Twilight Hollow',
       subtitle: 'The President arrives',
+      winText: 'The President retreats! But something stirs on the far shore…',
       desc: 'Night falls over the Wistful Wild. Glow Pikmin light the way for the biggest invasion yet, led by the President of Hocotate Freight himself.',
       theme: 'twilight',
       seed: 404,
@@ -205,7 +206,7 @@
       hpMul: 1.04,
       spots: 15,
       night: true,
-      mapPos: [1060, 260],
+      mapPos: [850, 330],
       paths: [
         [[-60, 260], [110, 260], [230, 180], [380, 170], [480, 260], [440, 380], [540, 470], [700, 460], [800, 560], [960, 610], [1090, 540], [1230, 590]],
         [[1000, -60], [1000, 90], [900, 170], [760, 180], [680, 280], [740, 370], [700, 460], [800, 560], [960, 610], [1090, 540], [1230, 590]],
@@ -263,8 +264,11 @@
       }
       return Math.sqrt(best);
     };
+    // biome zones (tide pools, ice, lava vents, dark zones) placed along the paths
+    if (PTD.resolveZones) PTD.resolveZones(lv, def);
     const inWater = (x, y, m) =>
-      (lv.water || []).some((w) => ((x - w.x) / (w.rx + m)) ** 2 + ((y - w.y) / (w.ry + m)) ** 2 < 1);
+      (lv.water || []).some((w) => ((x - w.x) / (w.rx + m)) ** 2 + ((y - w.y) / (w.ry + m)) ** 2 < 1) ||
+      (lv.inHazard ? lv.inHazard(x, y, m) : false);
 
     // onions next to each unique entrance
     lv.onions = [];
@@ -330,12 +334,19 @@
     // ---- decorations ----
     const rng = U.rng(def.seed * 7 + 3);
     const decor = [];
-    const R_OF = { bush: 26, rock: 16, pebbles: 10, clover: 12, daisy: 7, mushroom: 12, glowshroom: 12, posy: 14, cap: 18, can: 34, battery: 24, leaf: 14, fern: 22, log: 36, stump: 22, acorn: 8, reeds: 10, tuft: 5 };
+    const R_OF = {
+      bush: 26, rock: 16, pebbles: 10, clover: 12, daisy: 7, mushroom: 12, glowshroom: 12, posy: 14, cap: 18, can: 34, battery: 24, leaf: 14, fern: 22, log: 36, stump: 22, acorn: 8, reeds: 10, tuft: 5,
+      shell: 9, conch: 24, starfish: 9, seaweed: 10, driftwood: 34, snowdrift: 26, icicle: 12, pine: 20, iceBlock: 26, emberCrack: 14, obsidian: 12, charStump: 22, crystal: 14, stalagmite: 14,
+    };
     const WEIGHTS = {
       meadow: { bush: 5, rock: 3, pebbles: 3, clover: 5, daisy: 6, mushroom: 2, posy: 1.4, cap: 0.4, battery: 0.3, tuft: 7, stump: 0.5 },
       forest: { bush: 6, rock: 2, fern: 5, mushroom: 4, leaf: 7, acorn: 3, log: 0.6, stump: 1, tuft: 5, daisy: 2, pebbles: 2 },
       pool: { bush: 4, rock: 4, pebbles: 4, reeds: 2, clover: 4, daisy: 5, tuft: 6, cap: 0.4, can: 0.3, mushroom: 1, posy: 0.8 },
       twilight: { bush: 5, rock: 3, fern: 4, glowshroom: 4, mushroom: 2, daisy: 3, tuft: 5, stump: 0.7, pebbles: 2 },
+      beach: { tuft: 5, shell: 4, starfish: 2.4, pebbles: 4, rock: 3, seaweed: 3, bush: 1.5, driftwood: 0.4, daisy: 1 },
+      tundra: { snowdrift: 5, rock: 4, pebbles: 3, tuft: 3, icicle: 3, pine: 2.2, bush: 1 },
+      volcanic: { rock: 5, pebbles: 5, emberCrack: 3, obsidian: 3, tuft: 1.5, charStump: 0.8, mushroom: 0.4 },
+      cave: { rock: 4, pebbles: 4, crystal: 4, glowshroom: 3, stalagmite: 3, mushroom: 2, tuft: 1.5 },
     }[def.theme];
     const kinds = Object.keys(WEIGHTS);
     const tot = kinds.reduce((a, k) => a + WEIGHTS[k], 0);
@@ -361,14 +372,18 @@
     for (const [bx, by] of border) {
       const s = rng.range(1.1, 1.6);
       const x = bx + rng.range(-10, 10), y = by + rng.range(-6, 6);
-      if (ok(x, y, 26 * s * 0.6)) decor.push({ k: def.theme === 'forest' && rng() < 0.3 ? 'fern' : 'bush', x, y, s });
+      const bk = { tundra: 'snowdrift', volcanic: 'rock', cave: 'stalagmite' }[def.theme] || 'bush';
+      if (ok(x, y, 26 * s * 0.6)) decor.push({ k: def.theme === 'forest' && rng() < 0.3 ? 'fern' : bk, x, y, s: bk === 'bush' || bk === 'snowdrift' ? s : s * 1.3 });
     }
     // big props first
-    const bigs = { meadow: ['cap', 'posy', 'battery', 'stump'], forest: ['log', 'stump', 'acorn', 'log'], pool: ['cap', 'can', 'posy'], twilight: ['can', 'battery', 'stump'] }[def.theme];
+    const bigs = {
+      meadow: ['cap', 'posy', 'battery', 'stump'], forest: ['log', 'stump', 'acorn', 'log'], pool: ['cap', 'can', 'posy'], twilight: ['can', 'battery', 'stump'],
+      beach: ['conch', 'driftwood', 'cap', 'can'], tundra: ['iceBlock', 'pine', 'battery', 'pine'], volcanic: ['charStump', 'battery', 'obsidian', 'can'], cave: ['crystal', 'battery', 'crystal', 'cap'],
+    }[def.theme];
     for (const k of bigs) {
       for (let tries = 0; tries < 300; tries++) {
         const x = rng.range(80, PTD.W - 80), y = rng.range(140, PTD.H - 60);
-        const s = rng.range(0.9, 1.2);
+        const s = rng.range(0.9, 1.2) * ((k === 'crystal' || k === 'obsidian') ? 2 : 1);
         if (ok(x, y, R_OF[k] * s)) { decor.push({ k, x, y, s }); break; }
       }
     }
@@ -378,6 +393,8 @@
       const x = rng.range(0, PTD.W), y = rng.range(20, PTD.H);
       if (ok(x, y, R_OF[k] * s)) decor.push({ k, x, y, s });
     }
+    const CRYSTAL_COLS = ['#7fd8ff', '#c9a2ff', '#8bffcf'];
+    for (const d of decor) if (d.k === 'crystal') d.col = CRYSTAL_COLS[Math.floor(rng() * CRYSTAL_COLS.length)];
     lv.decor = decor;
 
     // hero start: a point along path 0, 55% of the way

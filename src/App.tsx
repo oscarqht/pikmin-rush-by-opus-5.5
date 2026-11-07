@@ -8,10 +8,12 @@ import { AlmanacModal } from './components/modals/AlmanacModal';
 import { PauseModal } from './components/modals/PauseModal';
 import { EndModal } from './components/modals/EndModal';
 import { AboutModal } from './components/modals/AboutModal';
+import { UpgradesModal } from './components/modals/UpgradesModal';
+import { HeroModal } from './components/modals/HeroModal';
 
 export const App: React.FC = () => {
   const [screen, setScreen] = useState<'title' | 'map' | 'game'>('title');
-  const [modal, setModal] = useState<'brief' | 'almanac' | 'pause' | 'end' | 'about' | null>(null);
+  const [modal, setModal] = useState<'brief' | 'almanac' | 'pause' | 'end' | 'about' | 'upgrades' | 'hero' | null>(null);
   const [levelIndex, setLevelIndex] = useState<number>(0);
   const [difficulty, setDifficulty] = useState<string>('normal');
   const [game, setGame] = useState<any>(null);
@@ -148,6 +150,8 @@ export const App: React.FC = () => {
   const handleGameEnd = useCallback(
     (r: any) => {
       if (!game) return;
+      // the Emperor keeps the XP he earned, win or lose
+      const hero = PTD.Progress.commitHero(game);
       const res = {
         win: r.win,
         stars: r.stars,
@@ -156,6 +160,7 @@ export const App: React.FC = () => {
         wave: game.waveIdx,
         totalWaves: game.waveTotal,
         levelIndex,
+        hero,
       };
       setEndResult(res);
       setModal('end');
@@ -193,6 +198,8 @@ export const App: React.FC = () => {
           onBackToTitle={handleBackToTitle}
           onSelectLevel={handleSelectLevel}
           onOpenAlmanac={() => setModal('almanac')}
+          onOpenUpgrades={() => setModal('upgrades')}
+          onOpenHero={() => setModal('hero')}
         />
       )}
 
@@ -236,6 +243,10 @@ export const App: React.FC = () => {
       )}
 
       {modal === 'about' && <AboutModal onClose={() => setModal(null)} />}
+
+      {modal === 'upgrades' && <UpgradesModal onClose={() => setModal(null)} />}
+
+      {modal === 'hero' && <HeroModal onClose={() => setModal(null)} />}
 
       {!loaded && (
         <div id="loading">

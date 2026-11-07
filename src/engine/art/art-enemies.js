@@ -21,7 +21,23 @@
     winged: { body: '#f68bc4', wings: true, flower: '#ffffff', bud: '#fff0f8' },
     ice: { body: '#8fe0f7', ice: true, flower: '#e4f9ff', bud: '#d0f3ff' },
     glow: { body: '#a6ff5e', glow: true, flower: '#f6ffc8', bud: '#eaffb0' },
+    bulbmin: { body: '#d9302a', bulb: true, flower: '#ffffff', bud: '#ffe0dc' },
   });
+
+  /** Bulbmin face: little Bulborb eyes on top, wide mouth and cream spots */
+  function bulbFace(g, side, hy) {
+    const spots = side ? [[-4, -3, 1.8], [-2.5, 3, 1.4], [-5.2, 1.5, 1]] : [[-4, hy - 3.5, 1.5], [3.8, hy - 4.2, 1.3], [0.5, hy - 6, 1.1]];
+    for (const [x, y, r] of spots) { g.beginPath(); H.ell(g, x, y, r, r * 0.85); g.fillStyle = '#fff4e2'; g.fill(); }
+    const eyes = side ? [[2.6, -6.4], [5.4, -5.6]] : [[-2.6, hy - 6.6], [2.6, hy - 6.6]];
+    for (const [x, y] of eyes) {
+      g.beginPath(); H.circ(g, x, y, 1.7); H.fs(g, '#fffdf5', 0.8);
+      g.beginPath(); H.circ(g, x + (side ? 0.5 : 0), y + 0.2, 0.85); g.fillStyle = '#120a06'; g.fill();
+    }
+    g.beginPath();
+    if (side) { g.moveTo(1, 1.5); g.quadraticCurveTo(4.5, 3.6, 6.6, 0.8); }
+    else { g.moveTo(-3.5, hy + 2); g.quadraticCurveTo(0, hy + 4.2, 3.5, hy + 2); }
+    g.lineWidth = 1; g.strokeStyle = OUT; g.stroke();
+  }
 
   /* ---------- the sprout on top: leaf / bud / flower ---------- */
   function sprout(g, x, y, tier, K, sway) {
@@ -213,8 +229,11 @@
       }
       // eyes
       const irisC = K.iris;
-      H.eye(g, 1.2, -1.4, 1.55, 2.2, 0.95, 0.45, 0.1, irisC, 0.8);
-      H.eye(g, 4.2, -1.2, 1.9, 2.5, 1.1, 0.5, 0.1, irisC, 0.8);
+      if (K.bulb) bulbFace(g, true, 0);
+      else {
+        H.eye(g, 1.2, -1.4, 1.55, 2.2, 0.95, 0.45, 0.1, irisC, 0.8);
+        H.eye(g, 4.2, -1.2, 1.9, 2.5, 1.1, 0.5, 0.1, irisC, 0.8);
+      }
       if (K.nose) {
         g.beginPath();
         g.moveTo(5.6, 0.2); g.quadraticCurveTo(10, 1.4, 6.0, 3.2);
@@ -275,7 +294,9 @@
         g.moveTo(1.8, hy - 6.5); g.lineTo(3, hy - 9.6);
         g.lineWidth = 0.9; g.strokeStyle = U.shade(c, -0.5); g.stroke();
       }
-      if (front) {
+      if (front && K.bulb) {
+        bulbFace(g, false, hy);
+      } else if (front) {
         H.eye(g, -2.5, hy - 1.2, 1.9, 2.5, 1.05, 0, 0.2, K.iris, 0.8);
         H.eye(g, 2.5, hy - 1.2, 1.9, 2.5, 1.05, 0, 0.2, K.iris, 0.8);
         if (K.nose) {
@@ -314,10 +335,20 @@
     alph: { suit: '#3fa2dc', trim: '#ffffff', pack: '#2b77a6', glove: '#2b77a6', skin: '#f9e1c7', bulb: '#6fd0ff', koppa: true, hairC: '#3570e6', scale: 1.02 },
     brittany: { suit: '#ef7fb3', trim: '#ffffff', pack: '#c45690', glove: '#c45690', skin: '#fbe2cc', bulb: '#ff9bd0', koppa: true, hairC: '#f05ca8', bob: true, scale: 1 },
     charlie: { suit: '#4c9a49', trim: '#f2d04c', pack: '#356f33', glove: '#2f4f2f', skin: '#f2cfae', bulb: '#ffe066', koppa: true, hairC: '#6b4426', mustache: '#6b4426', star: true, burly: true, scale: 1.22 },
+    collin: { suit: '#f08a2a', trim: '#ffffff', pack: '#3a6fb0', glove: '#3a6fb0', skin: '#f6cfa4', bulb: '#ff9f43', nose: 'round', hair: '#3a2a1a', ears: true, scale: 1.02 },
+    leafling: { suit: '#4f9e36', trim: '#a6e06a', pack: '#3a7a28', glove: '#3a7a28', skin: '#9ad66a', bulb: '#c9f08a', nose: 'round', noseCol: '#6fb84a', bald: true, leafy: true, scale: 0.95 },
+    louieLeaf: { suit: '#3f8a30', trim: '#c9f08a', pack: '#2e6a22', glove: '#a6e06a', skin: '#f2c49a', bulb: '#9be15d', nose: 'round', hair: '#6b4a2a', chubby: true, leafy: true, cape: true, scale: 1.5 },
   });
 
   function drawCaptain(g, kind, view, ph, pose) {
     const K = CAPT[kind];
+    if (K.custom) {
+      g.save();
+      g.scale(K.scale, K.scale);
+      K.custom(g, view, ph, pose);
+      g.restore();
+      return;
+    }
     const t = ph * TAU;
     const walking = pose === 'walk';
     const atk = pose === 'attack' ? Math.sin(ph * Math.PI) : 0;
@@ -497,7 +528,7 @@
         g.beginPath();
         if (K.nose === 'big') H.ell(g, nx, ny, side ? 3.4 : 2.8, 2.6);
         else H.ell(g, nx, ny, 2.2, 2);
-        H.fs(g, H.vol(g, nx, ny, 3, 2.5, '#f19a7e', 0.3, -0.3), 1);
+        H.fs(g, H.vol(g, nx, ny, 3, 2.5, K.noseCol || '#f19a7e', 0.3, -0.3), 1);
         if (K.mustache) {
           g.beginPath(); H.ell(g, nx - (side ? 1 : 0) - 2.6, ny + 2.3, 3, 1.3, 0.2); H.fs(g, K.mustache, 0.8);
           g.beginPath(); H.ell(g, nx - (side ? 1 : 0) + 2.6, ny + 2.3, 3, 1.3, -0.2); H.fs(g, K.mustache, 0.8);
@@ -505,6 +536,8 @@
       }
     }
     g.restore();
+
+    if (K.leafy) { leafCloak(g, K, hx, hy, hr, t, side, bob); return; }
 
     // helmet glass dome
     g.beginPath(); H.circ(g, hx, hy, hr + 2.2);
@@ -531,6 +564,25 @@
       // headlamp
       g.beginPath(); H.ell(g, hx + (side ? 4 : 0), hy - hr - 1, 2.6, 1.8); H.fs(g, K.bulb, 1);
     }
+  }
+
+  /** leaves instead of a helmet: crown of leaves + leaf cape (Leaflings, Leafling Louie) */
+  function leafCloak(g, K, hx, hy, hr, t, side, bob) {
+    const leaf = (x, y, rot, L, col) => {
+      g.save(); g.translate(x, y); g.rotate(rot);
+      g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(L * 0.45, -L * 0.42, 0, -L); g.quadraticCurveTo(-L * 0.45, -L * 0.42, 0, 0);
+      H.fs(g, H.vol(g, 0, -L * 0.5, L * 0.35, L * 0.5, col, 0.35, -0.3), 1.1);
+      g.beginPath(); g.moveTo(0, -0.5); g.lineTo(0, -L * 0.9); g.lineWidth = 0.6; g.strokeStyle = 'rgba(30,70,20,0.7)'; g.stroke();
+      g.restore();
+    };
+    const sw = Math.sin(t) * 0.12;
+    if (K.cape) {
+      for (const [x, y, r] of [[-9, -10 + bob, -2.4], [-10, -17 + bob, -2.1], [-8, -23 + bob, -1.8]]) leaf(x, y, r + sw, 11, '#5cae3a');
+    }
+    for (const [x, y, r] of [[4, -16 + bob, 2.6], [-3, -12 + bob, 3.4]]) leaf(x, y, r, 7, '#6fc04a');
+    const crown = side ? [[-5, -4, -0.9, 10], [-1, -6, -0.35, 12], [3, -6, 0.3, 11], [6, -3, 0.9, 8]] : [[-5, -4, -0.8, 10], [0, -6.5, 0, 12], [5, -4, 0.8, 10]];
+    for (const [dx, dy, r, L] of crown) leaf(hx + dx, hy + dy, r + sw, L * (hr / 8.6), dx % 2 ? '#5cc443' : '#4f9e36');
+    g.beginPath(); H.circ(g, hx + (side ? 2 : 0), hy - hr - 4, 1.6); H.fs(g, '#c9f08a', 0.8);
   }
 
   const CAPT_SIZE = { w: 64, h: 92, ax: 32, ay: 82 };

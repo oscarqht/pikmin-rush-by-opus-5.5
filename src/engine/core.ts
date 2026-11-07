@@ -75,7 +75,15 @@ export const Save = (PTD.Save = {
     } catch (e) {
       this.data = null;
     }
-    if (!this.data) this.data = { stars: {}, muted: false, music: true, seen: {} };
+    if (!this.data || typeof this.data !== 'object') this.data = { stars: {}, muted: false, music: true, seen: {} };
+    // migrate older saves: keep stars & seen, add the progression fields
+    const d = this.data;
+    if (!d.stars || typeof d.stars !== 'object') d.stars = {};
+    if (!d.seen || typeof d.seen !== 'object') d.seen = {};
+    if (!d.upgrades || typeof d.upgrades !== 'object') d.upgrades = {};
+    if (!d.hero || typeof d.hero !== 'object') d.hero = { xp: 0, skills: {} };
+    if (!d.hero.skills || typeof d.hero.skills !== 'object') d.hero.skills = {};
+    if (typeof d.hero.xp !== 'number' || !isFinite(d.hero.xp)) d.hero.xp = 0;
     return this.data;
   },
   write() {

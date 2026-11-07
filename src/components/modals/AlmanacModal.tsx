@@ -29,6 +29,9 @@ export const AlmanacModal: React.FC<AlmanacModalProps> = ({ onClose }) => {
         'cannon1',
         'decorated',
         'wolly',
+        'beetle1',
+        'dweevil',
+        'arachnode',
       ];
       for (const id of order) {
         if (PTD.TOWERS[id]) {
@@ -133,6 +136,9 @@ export const AlmanacModal: React.FC<AlmanacModalProps> = ({ onClose }) => {
       stats.push({ label: 'Lives', val: String(e.lives) });
       stats.push({ label: 'Bounty', val: `${e.reward} pokos` });
       if (e.flying) stats.push({ label: '', val: 'Flying' });
+      if (e.elecImmune) stats.push({ label: '', val: 'Immune to electricity' });
+      if (e.unblockable) stats.push({ label: '', val: 'Cannot be blocked' });
+      if (e.split) stats.push({ label: '', val: 'Splits in two' });
     } else if (en.kind === 'hero') {
       desc = PTD.HERO.desc;
       stats.push({ label: 'HP', val: String(PTD.HERO.hp) });

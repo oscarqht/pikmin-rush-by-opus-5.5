@@ -38,6 +38,7 @@
       ctx.strokeStyle = 'rgba(255,255,255,0.35)';
       ctx.lineWidth = 1.5;
       for (const w of this.lv.water) {
+        if (w.lava || w.frozen) continue;
         for (let i = 0; i < 5; i++) {
           const k = (now * 0.15 + i / 5) % 1;
           const x = w.x + Math.sin(i * 7.1) * w.rx * 0.5, y = w.y + Math.cos(i * 3.3) * w.ry * 0.4;
@@ -47,6 +48,10 @@
       }
       ctx.restore();
     }
+
+    // biome hazards (tides, ice glints, vent glow, lava bubbles)
+    if (this.drawBiomeGround) this.drawBiomeGround(ctx);
+    this.drawLavaBubbles(ctx);
 
     // decals
     for (const d of this.decals) {
@@ -80,11 +85,13 @@
     for (const f of this.effects) {
       if (f.kind === 'ring' && f.ground) this.drawRing(ctx, f);
       else if (f.kind === 'quake') this.drawQuake(ctx, f);
+      else if (f.kind === 'web') this.drawWebFx(ctx, f);
       else if (f.kind === 'flag') this.drawFlagFx(ctx, f);
       else if (f.kind === 'snagret' && f.t < 0.4) {
         ctx.save(); ctx.globalAlpha = 0.6 * (1 - f.t / 0.4);
         ctx.strokeStyle = '#ffdf8a'; ctx.lineWidth = 3; ctx.setLineDash([6, 5]);
-        ctx.beginPath(); ctx.ellipse(f.x, f.y, PTD.SPELLS.snagret.radius, PTD.SPELLS.snagret.radius * 0.8, 0, 0, TAU); ctx.stroke();
+        const sr = f.radius || PTD.SPELLS.snagret.radius;
+        ctx.beginPath(); ctx.ellipse(f.x, f.y, sr, sr * 0.8, 0, 0, TAU); ctx.stroke();
         ctx.restore();
       }
     }
@@ -95,7 +102,7 @@
     ctx.beginPath();
     for (const e of this.enemies) {
       if (e.d < -5 || e.carried) continue;
-      const r = e.def.pik ? (e.flying ? 5 : 7) : 10 * Art.CAPT[e.type].scale;
+      const r = (e.def.pik ? (e.flying ? 5 : 7) : 10 * Art.CAPT[e.type].scale) * (e.sz || 1);
       ctx.moveTo(e.x + r, e.y); ctx.ellipse(e.x, e.y, r, r * 0.42, 0, 0, TAU);
     }
     for (const u of this.units) {
@@ -156,19 +163,23 @@
       if (f.kind === 'ring' && !f.ground) this.drawRing(ctx, f);
       else if (f.kind === 'ghost') this.drawGhost(ctx, f);
       else if (f.kind === 'gust') this.drawGust(ctx, f);
+      else if (f.kind === 'bolt') this.drawBoltFx(ctx, f);
+      else if (f.kind === 'eruption') this.drawEruptionFx(ctx, f);
     }
 
     this.drawParticles(ctx);
 
-    // night
+    // night / cave darkness
     if (this.def.night) this.drawNight(ctx);
+    if (this.def.theme === 'cave' && this.drawCaveDark) this.drawCaveDark(ctx);
 
     // health bars
     for (const e of this.enemies) {
       if (e.d < 0 || (e.hp >= e.maxHp && !e.def.captain)) continue;
       const big = !e.def.pik;
-      const w = big ? 30 * Math.min(1.6, Art.CAPT[e.type].scale) : 18;
-      const hh = big ? 50 * Art.CAPT[e.type].scale : 40;
+      const sz = e.sz || 1;
+      const w = (big ? 30 * Math.min(1.6, Art.CAPT[e.type].scale) : 18) * sz;
+      const hh = (big ? 50 * Art.CAPT[e.type].scale : 40) * sz;
       this.hpBar(ctx, e.x, e.y - hh - (e.flying ? 22 : 0), w, e.hp / e.maxHp, e.slowT > 0 ? '#7fd8ff' : '#7ee04a');
     }
     for (const u of this.units) {
@@ -206,13 +217,13 @@
     let t = null, range = 0, col = 'rgba(255,255,255,';
     if (ui.menu && ui.menu.tower) {
       t = ui.menu.tower;
-      range = t.def.range;
-      if (ui.hoverItem && ui.hoverItem.preview) range = PTD.TOWERS[ui.hoverItem.preview].range;
+      range = this.towerRange(t);
+      if (ui.hoverItem && ui.hoverItem.preview) range = this.rangeAt(PTD.TOWERS[ui.hoverItem.preview], t.x, t.y);
     } else if (ui.menu && ui.menu.spot && ui.hoverItem && ui.hoverItem.preview) {
       t = ui.menu.spot;
-      range = PTD.TOWERS[ui.hoverItem.preview].range;
+      range = this.rangeAt(PTD.TOWERS[ui.hoverItem.preview], t.x, t.y);
     }
-    if (ui.mode === 'rally' && ui.menu && ui.menu.tower) { t = ui.menu.tower; range = t.def.range; col = 'rgba(255,230,120,'; }
+    if (ui.mode === 'rally' && ui.menu && ui.menu.tower) { t = ui.menu.tower; range = this.towerRange(t); col = 'rgba(255,230,120,'; }
     if (!t || !range) return;
     ctx.save();
     ctx.beginPath();
@@ -286,7 +297,8 @@
     let vx = e.dx, vy = e.dy;
     if (e.faceX != null) { vx = e.faceX; vy = 0; }
     let view = 'side';
-    if (e.faceX == null && Math.abs(vy) > Math.abs(vx) * 1.25) view = vy < 0 ? 'back' : 'front';
+    const sideOnly = !e.def.pik && Art.CAPT[e.type].sideOnly;
+    if (!sideOnly && e.faceX == null && Math.abs(vy) > Math.abs(vx) * 1.25) view = vy < 0 ? 'back' : 'front';
     let pose = 'walk', frame;
     if (e.atkAnim > 0) { pose = 'attack'; frame = Math.min(5, Math.floor((1 - e.atkAnim) * 6)); }
     else if (e.blocker || e.stunT > 0 || e.carried) { pose = 'idle'; frame = 0; }
@@ -302,19 +314,30 @@
     if (e.flashT > 0) spr = Art.flash(s);
     else if (e.slowT > 0) spr = Art.tint(s, '#7fd8ff', 0.28);
     else if (e.burnT > 0) spr = Art.tint(s, '#ff7a2a', 0.22);
+    else if (e.onIce > 0) spr = Art.tint(s, '#dff4ff', 0.25);
     let y = e.y;
     if (e.flying) y -= 22 + Math.sin(this.time * 5 + e.uid) * 2;
     let alpha = null;
     const rem = e.path.len - e.d;
     if (rem < 30) alpha = Math.max(0, rem / 30);
     if (e.d < 10) alpha = Math.max(0, (e.d + 8) / 18);
-    Art.blit(ctx, spr, e.x, y, flip, 1, alpha);
+    const sz = e.sz || 1;
+    Art.blit(ctx, spr, e.x, y, flip, sz, alpha);
+    if (e.rallyT > 0) {
+      ctx.save(); ctx.globalAlpha = 0.5 + 0.2 * Math.sin(this.time * 10);
+      Art.blit(ctx, Art.glow('#ff9f43', 12), e.x, y - 34 * sz);
+      ctx.restore();
+    }
+    if (e.chargeT > 0) for (let i = 0; i < 3; i++) {
+      ctx.save(); ctx.globalAlpha = 0.5 - i * 0.15; ctx.strokeStyle = '#fff6e0'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(e.x - e.dx * (16 + i * 7), y - 14 - i * 5); ctx.lineTo(e.x - e.dx * (28 + i * 7), y - 14 - i * 5); ctx.stroke(); ctx.restore();
+    }
     if (e.buffT > 0) {
       ctx.save(); ctx.globalAlpha = 0.6;
       Art.blit(ctx, Art.glow('#ffe066', 14), e.x, y - 30);
       ctx.restore();
     }
-    if (e.stunT > 0 && !e.carried) this.drawStars(ctx, e.x, y - (e.def.pik ? 42 : 50 * Art.CAPT[e.type].scale), e.def.pik ? 8 : 12);
+    if (e.stunT > 0 && !e.carried) this.drawStars(ctx, e.x, y - (e.def.pik ? 42 : 50 * Art.CAPT[e.type].scale) * sz, e.def.pik ? 8 : 12);
     const ui = this.ui;
     if (ui && ui.selected === e) {
       ctx.save(); ctx.strokeStyle = '#ff6a5a'; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.8;
@@ -432,7 +455,8 @@
     ctx.save();
     ctx.globalAlpha = 1 - k;
     ctx.strokeStyle = '#6b4424'; ctx.lineWidth = 4;
-    const r = 20 + k * 70;
+    const qs = (f.r || 85) / 85;
+    const r = (20 + k * 70) * qs;
     ctx.beginPath(); ctx.ellipse(f.x, f.y, r, r * 0.5, 0, 0, TAU); ctx.stroke();
     ctx.strokeStyle = '#3a2412'; ctx.lineWidth = 2;
     for (let i = 0; i < 7; i++) {
@@ -473,6 +497,26 @@
     const y = f.y - 20 - k * 60;
     const x = f.x + Math.sin(f.t * 5) * 5;
     Art.blit(ctx, Art.ghost(f.type), x, y, false, 0.9 + Math.sin(f.t * 12) * 0.05, (1 - k) * 0.9);
+  };
+
+  /** bubbling glow on lava pools (volcanic levels) */
+  G.drawLavaBubbles = function (ctx) {
+    const pools = this.lv.water;
+    if (!pools || !pools.some((w) => w.lava)) return;
+    const now = this.time;
+    ctx.save();
+    for (const w of pools) {
+      if (!w.lava) continue;
+      for (let i = 0; i < 4; i++) {
+        const k = (now * 0.6 + i * 0.27 + w.x * 0.001) % 1;
+        const x = w.x + Math.sin(i * 7.3 + w.y) * w.rx * 0.5, y = w.y + Math.cos(i * 3.1 + w.x) * w.ry * 0.4;
+        ctx.globalAlpha = Math.sin(k * Math.PI);
+        ctx.beginPath(); ctx.arc(x, y - k * 3, 2 + k * 4, 0, TAU);
+        ctx.fillStyle = '#ffe07a'; ctx.fill();
+        ctx.lineWidth = 1.2; ctx.strokeStyle = '#b8280a'; ctx.stroke();
+      }
+    }
+    ctx.restore();
   };
 
   G.drawKo = function (ctx, f) {
@@ -574,6 +618,28 @@
         case 'heal':
           ctx.globalAlpha = a; ctx.fillStyle = p.col;
           ctx.fillRect(p.x - 1.2, p.y - 4, 2.4, 8); ctx.fillRect(p.x - 4, p.y - 1.2, 8, 2.4);
+          break;
+        case 'snow': case 'mote':
+          ctx.globalAlpha = Math.min(1, a * 3) * 0.9;
+          ctx.fillStyle = p.col;
+          ctx.beginPath(); H.circ(ctx, p.x, p.y, p.size); ctx.fill();
+          break;
+        case 'ash':
+          ctx.globalAlpha = Math.sin(k * Math.PI) * 0.9;
+          ctx.fillStyle = p.col;
+          ctx.beginPath(); H.circ(ctx, p.x, p.y, p.size * (0.5 + a * 0.5)); ctx.fill();
+          break;
+        case 'drop':
+          ctx.globalAlpha = a; ctx.fillStyle = p.col;
+          ctx.beginPath(); ctx.ellipse(p.x, p.y, p.size * 0.7, p.size * 1.6, 0, 0, TAU); ctx.fill();
+          break;
+        case 'leafBurst':
+          ctx.globalAlpha = Math.min(1, a * 2);
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+          ctx.fillStyle = p.col;
+          ctx.beginPath(); ctx.ellipse(0, 0, p.size, p.size * 0.5, 0, 0, TAU); ctx.fill();
+          ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(20,50,10,0.6)'; ctx.stroke();
+          ctx.restore();
           break;
         case 'petal': case 'leafAmb':
           ctx.globalAlpha = p.type === 'leafAmb' ? Math.min(1, a * 3) * 0.85 : a;

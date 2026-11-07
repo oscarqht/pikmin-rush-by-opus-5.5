@@ -21,9 +21,9 @@
       tip: 'Half damage from fire.',
     },
     yellow: {
-      name: 'Yellow Pikmin', pik: true, hp: 26, speed: 44, armor: 0, mres: 0, reward: 6, dmg: [1, 2], rate: 0.9, lives: 1,
-      desc: 'Big-eared and light on their feet. They scurry past slow towers.',
-      tip: 'Fast but fragile.',
+      name: 'Yellow Pikmin', pik: true, hp: 26, speed: 44, armor: 0, mres: 0, reward: 6, dmg: [1, 2], rate: 0.9, lives: 1, elecImmune: true,
+      desc: 'Big-eared and light on their feet. They scurry past slow towers, and electricity cannot hurt them: Anode Beetles ignore them.',
+      tip: 'Fast. Immune to electricity.',
     },
     blue: {
       name: 'Blue Pikmin', pik: true, hp: 38, speed: 33, armor: 0, mres: 0, reward: 7, dmg: [1, 3], rate: 1, lives: 1,
@@ -60,6 +60,11 @@
       desc: 'Night-time Pikmin that shimmer with bioluminescence. Resist magic.',
       tip: 'High magic resistance.',
     },
+    bulbmin: {
+      name: 'Bulbmin', pik: true, hp: 80, speed: 30, armor: 0.25, mres: 0.15, reward: 11, dmg: [3, 5], rate: 1.1, lives: 1, cave: true,
+      desc: 'Spotted cave-dwelling Pikmin that look like tiny Bulborbs. Tough hides shrug off pebbles and spells alike.',
+      tip: 'Tough: armour and magic resistance.',
+    },
     olimar: {
       name: 'Captain Olimar', captain: true, big: true, hp: 520, speed: 28, armor: 0.2, mres: 0, reward: 45, dmg: [8, 14], rate: 1.2, lives: 3, ability: 'whistle',
       desc: 'Veteran Hocotate Freight captain. His whistle rallies nearby Pikmin, speeding them up and shaking off slows.',
@@ -90,10 +95,30 @@
       desc: 'President of Hocotate Freight. Summons squads of Pikmin and is immune to being carried off.',
       tip: 'BOSS. Summons Pikmin. Costs 20 lives!',
     },
+    collin: {
+      name: 'Collin', captain: true, big: true, hp: 420, speed: 34, armor: 0.1, mres: 0.1, reward: 42, dmg: [6, 10], rate: 1, lives: 3, ability: 'rally',
+      desc: 'Rescue Corps captain. His rallying cry toughens nearby Pikmin: for a few seconds they move faster and take a quarter less damage.',
+      tip: 'Rally: nearby Pikmin faster & tougher.',
+    },
+    oatchi: {
+      name: 'Oatchi', captain: true, big: true, hp: 300, speed: 44, armor: 0.15, mres: 0, reward: 38, dmg: [8, 12], rate: 0.9, lives: 1, ability: 'charge', unblockable: true,
+      desc: 'The Rescue Corps pup. Bulborb dens cannot stop him. He charges through blockers, and every few seconds frees the Pikmin they are holding and carries them along.',
+      tip: 'Cannot be blocked. Frees held Pikmin.',
+    },
+    leafling: {
+      name: 'Leafling', captain: true, big: true, hp: 170, speed: 38, armor: 0, mres: 0, reward: 14, dmg: [3, 5], rate: 1, lives: 1, split: true, leafy: true,
+      desc: 'A decoy captain made of leaves. Knock one down and it bursts into two smaller Leaflings that keep marching.',
+      tip: 'Splits in two when defeated.',
+    },
+    louieLeaf: {
+      name: 'Leafling Louie', captain: true, big: true, boss: true, hp: 6200, speed: 15, armor: 0.25, mres: 0.25, reward: 420, dmg: [30, 45], rate: 1.4, lives: 20, ability: 'leafsummon', leafy: true,
+      desc: 'Louie, wrapped in a cloak of leaves, commands a whole Leafling army. He summons Leaflings and Bulbmin, and sheds a swarm of Leaflings when badly hurt.',
+      tip: 'BOSS. Summons Leaflings. Costs 20 lives!',
+    },
   };
 
   /* ------------------------------------------------------------------
-   * TOWERS — native creatures. family: groink | den | hog | cannon
+   * TOWERS — native creatures. family: groink | den | hog | cannon | beetle
    * tier 1-3 = upgrades, tier 4 = elite branch.
    * ------------------------------------------------------------------ */
   PTD.TOWERS = {
@@ -165,11 +190,30 @@
       attack: 'jump', dtype: 'phys', dmg: [60, 95], rate: 3.2, range: 170, splash: 62, air: false, stun: 1.2, next: [],
       desc: 'A Yellow Wollywog leaps out of its pond and belly-flops onto the march, stunning everything it squashes.',
     },
+
+
+    beetle1: {
+      family: 'beetle', tier: 1, name: 'Anode Beetle', cost: 110, creature: 'anode', scale: 0.62,
+      attack: 'zap', dtype: 'elec', dmg: [9, 15], rate: 1.5, range: 130, air: true, chain: 2, next: ['beetle2'],
+      desc: 'A metal-shelled beetle charged with electricity. Its bolts jump between up to 3 Pikmin and ignore armour. Yellow Pikmin are immune.',
+    },
+    beetle2: { family: 'beetle', tier: 2, name: 'Anode Beetle II', cost: 170, creature: 'anode', scale: 0.7, attack: 'zap', dtype: 'elec', dmg: [17, 27], rate: 1.5, range: 140, air: true, chain: 3, next: ['beetle3'], desc: 'A brighter spark. Bolts jump between up to 4 Pikmin.' },
+    beetle3: { family: 'beetle', tier: 3, name: 'Anode Beetle III', cost: 250, creature: 'anode', scale: 0.78, attack: 'zap', dtype: 'elec', dmg: [27, 41], rate: 1.5, range: 150, air: true, chain: 4, next: ['dweevil', 'arachnode'], desc: 'A crackling elder beetle. Ready to evolve.' },
+    dweevil: {
+      family: 'beetle', tier: 4, name: 'Anode Dweevil', cost: 280, creature: 'dweevil', scale: 0.8,
+      attack: 'zap', dtype: 'elec', dmg: [34, 52], rate: 1.25, range: 165, air: true, chain: 6, stunChance: 0.2, next: [],
+      desc: 'A dweevil hauling a charged treasure. Storm bolts chain across 7 Pikmin, and each hit may stun.',
+    },
+    arachnode: {
+      family: 'beetle', tier: 4, name: 'Arachnode', cost: 270, creature: 'arachnode', scale: 0.74,
+      attack: 'zap', dtype: 'elec', dmg: [30, 46], rate: 1.4, range: 165, air: true, chain: 3, ability: 'web', abilityCd: 8, next: [],
+      desc: 'A long-legged spider that spins live wires. Every 8s it strings an electric web across the trail that slows and shocks every Pikmin crossing it.',
+    },
   };
 
-  PTD.BUILD_LIST = ['groink1', 'den1', 'hog1', 'cannon1'];
+  PTD.BUILD_LIST = ['groink1', 'den1', 'hog1', 'cannon1', 'beetle1'];
 
-  PTD.FAMILY_NAME = { groink: 'Ranged', den: 'Den', hog: 'Magic', cannon: 'Artillery' };
+  PTD.FAMILY_NAME = { groink: 'Ranged', den: 'Den', hog: 'Magic', cannon: 'Artillery', beetle: 'Electric' };
 
   PTD.HERO = {
     name: 'Emperor Bulblax',

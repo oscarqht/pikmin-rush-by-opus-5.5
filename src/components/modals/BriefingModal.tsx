@@ -78,6 +78,7 @@ export const BriefingModal: React.FC<BriefingModalProps> = ({
           <div id="brief-thumb" ref={thumbRef}></div>
           <div className="brief-text">
             <p>{lv.desc}</p>
+            {lv.hazard && <p className="hazard">⚠ {lv.hazard}</p>}
             <div className="meta">
               {lv.waves.length} waves · {lv.paths.length} trail{lv.paths.length > 1 ? 's' : ''} · Starting pokos {lv.gold}
             </div>

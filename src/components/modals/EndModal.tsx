@@ -10,6 +10,7 @@ interface EndModalProps {
     wave: number;
     totalWaves: number;
     levelIndex: number;
+    hero?: { gained: number; before: number; after: number } | null;
   };
   onRetry: () => void;
   onContinue: () => void;
@@ -41,12 +42,11 @@ export const EndModal: React.FC<EndModalProps> = ({
     }
   }, [result, lv]);
 
-  const isLastLevel = result.levelIndex === (PTD.LEVELS?.length || 4) - 1;
   const subtitle = result.win
-    ? isLastLevel
-      ? 'The President retreats! The creature kingdom is safe… for now.'
-      : 'The Pikmin have been driven back to their Onion!'
+    ? (lv && lv.winText) || 'The Pikmin have been driven back to their Onion!'
     : 'The Pikmin overran the burrow. Regroup and try again!';
+  const hero = result.hero;
+  const levelsUp = hero ? hero.after - hero.before : 0;
 
   return (
     <div className={`modal active ${result.win ? 'win' : 'lose'}`} id="modal-end">
@@ -69,6 +69,18 @@ export const EndModal: React.FC<EndModalProps> = ({
             Wave {Math.min(result.wave, result.totalWaves)}/{result.totalWaves}
           </span>
         </div>
+        {hero && hero.gained > 0 && (
+          <div className="end-hero">
+            Emperor Bulblax +{hero.gained} XP
+            {levelsUp > 0 && (
+              <b>
+                {' '}
+                · Level {hero.after}! +{levelsUp} skill point{levelsUp > 1 ? 's' : ''}
+              </b>
+            )}
+          </div>
+        )}
+        {result.win && <div className="end-hint">Spend stars on the world map's Upgrades screen.</div>}
         <div className="row">
           <button
             id="end-retry"
