@@ -15,9 +15,11 @@
   const MUZZLE = {
     groink: [32, -23], manatlegs: [36, -40], snitch: [22, -44], fiery: [30, -29], withering: [30, -29],
     puffy: [34, -46], larva: [26, -20], decorated: [32, -20], wolly: [10, -24],
+    anode: [20, -50], dweevil: [8, -52], arachnode: [0, -66],
   };
 
   let UID = 1;
+  const ZERO_MODS = { cost: 0, dmg: 0, range: 0, rate: 0, pierce: 0, hp: 0, respawn: 0, armor: 0, burn: 0, splash: 0, stun: 0, chain: 0, shock: 0, snagCd: 0, reinfCount: 0, snagRadius: 0, reinfHp: 0, reinfTtl: 0, snagPecks: 0 };
 
   class Game {
     constructor(def, opts) {
@@ -53,8 +55,13 @@
       this.shake = 0;
       this.stats = { kills: 0, built: 0 };
       this.spots = this.lv.spots.map((s, i) => ({ id: i, x: s.x, y: s.y, tower: null }));
+      // persistent star-tree modifiers (opts.mods lets demos/tests override)
+      this.meta = opts.mods || (PTD.Progress ? PTD.Progress.mods() : {});
+      this.heroSkills = opts.heroSkills || (PTD.Progress ? PTD.Progress.skills() : {});
+      this.heroXpStart = opts.heroXp != null ? opts.heroXp : PTD.Progress ? PTD.Progress.heroXp() : 0;
+      const sm = this.fam('spells');
       this.spells = {
-        snagret: { cd: 0, max: PTD.SPELLS.snagret.cd },
+        snagret: { cd: 0, max: Math.round(PTD.SPELLS.snagret.cd * (1 + sm.snagCd)) },
         reinforce: { cd: 0, max: PTD.SPELLS.reinforce.cd },
       };
       this.hero = this.makeHero();
@@ -142,7 +149,7 @@
         cd: U.rand(0, d.rate), atkAnim: 0,
         slowT: 0, slowF: 1, burnT: 0, burnDps: 0, stunT: 0, buffT: 0,
         flashT: 0, walk: Math.random(),
-        abilityT: U.rand(3, 6), snacked: false,
+        abilityT: U.rand(3, 6), snacked: false, rallyT: 0, chargeT: 0, terrainF: 1, sz: 1,
         dead: false, carried: false, alpha: 1,
       };
       if (nearX != null) e.lane = U.clamp(e.lane, -6, 6);
@@ -175,6 +182,9 @@
       let s = e.baseSpeed;
       if (e.slowT > 0) s *= e.slowF;
       if (e.buffT > 0) s *= 1.4;
+      if (e.rallyT > 0) s *= 1.2;
+      if (e.chargeT > 0) s *= 1.7;
+      if (e.terrainF) s *= e.terrainF;
       return s;
     }
 
@@ -185,6 +195,8 @@
         if (e.atkAnim > 0) e.atkAnim = Math.max(0, e.atkAnim - dt / 0.4);
         if (e.slowT > 0) e.slowT -= dt;
         if (e.buffT > 0) e.buffT -= dt;
+        if (e.rallyT > 0) e.rallyT -= dt;
+        if (e.chargeT > 0) e.chargeT -= dt;
         if (e.burnT > 0) {
           e.burnT -= dt;
           this.damage(e, e.burnDps * dt, 'fire', null, true);
@@ -194,6 +206,12 @@
         this.updateCaptain(e, dt);
         if (e.dead) continue;
         if (e.stunT > 0) { e.stunT -= dt; continue; }
+        // Oatchi barrels through blockers
+        if (e.blocker && e.def.unblockable) {
+          const b = e.blocker;
+          this.releaseEnemy(e);
+          if (b && !b.dead && b.target === e) { this.releaseUnit(b); b.stunT = Math.max(b.stunT, 0.6); this.hurtUnit(b, U.rand(e.def.dmg[0], e.def.dmg[1]), e); }
+        }
         // blocked → fight
         if (e.blocker && !e.flying) {
           const b = e.blocker;
@@ -262,6 +280,62 @@
         e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.08);
         this.effect({ kind: 'ring', x: e.x, y: e.y, r0: 10, r1: 110, dur: 0.8, col: '#ff8fcf' });
         sfx('heal');
+      } else if (ab === 'rally' && e.abilityT <= 0) {
+        e.abilityT = 6;
+        for (const o of this.enemies) {
+          if (o.def.pik && U.dist(o.x, o.y, e.x, e.y) < 120) { o.rallyT = 4; }
+        }
+        e.rallyT = 2;
+        this.effect({ kind: 'ring', x: e.x, y: e.y, r0: 10, r1: 120, dur: 0.7, col: '#ff9f43' });
+        this.floater('Rally!', e.x, e.y - 52, '#ffb35a', 13);
+        sfx('whistle');
+      } else if (ab === 'charge' && e.abilityT <= 0) {
+        e.abilityT = 5;
+        e.chargeT = 1;
+        let freed = 0;
+        for (const o of this.enemies) {
+          if (o === e || !o.def.pik || o.dead || U.dist(o.x, o.y, e.x, e.y) > 70) continue;
+          if (o.blocker) {
+            const b = o.blocker;
+            this.releaseEnemy(o);
+            if (b && !b.dead) { this.releaseUnit(b); b.stunT = Math.max(b.stunT, 0.8); }
+            freed++;
+          }
+          o.buffT = Math.max(o.buffT, 1.5);
+          o.stunT = 0;
+        }
+        this.floater(freed ? 'Fetch!' : 'Charge!', e.x, e.y - 40, '#ffd38a', 13);
+        for (let i = 0; i < 6; i++) this.particle('dust', e.x - e.dx * 10, e.y);
+        sfx('bark');
+      } else if (ab === 'leafsummon') {
+        if (!e.shed) e.shed = 0;
+        const thresholds = [0.66, 0.33];
+        if (e.shed < thresholds.length && e.hp < e.maxHp * thresholds[e.shed]) {
+          e.shed++;
+          for (let i = 0; i < 6; i++) {
+            const ne = this.spawnEnemy('leafling', 0, e.path.idx, Math.max(0, e.d - 10 - i * 8));
+            ne.stunT = 0.3;
+          }
+          e.buffT = 3;
+          for (let i = 0; i < 24; i++) this.particle('leafBurst', e.x + U.rand(-20, 20), e.y - U.rand(10, 70), U.pick(['#5cc443', '#3f8a2c', '#8fd35a']));
+          this.floater('Leaf storm!', e.x, e.y - 100, '#9be15d', 16);
+          this.shake = 0.4;
+          sfx('leaf');
+        }
+        if (e.abilityT <= 0) {
+          e.abilityT = 8;
+          for (let i = 0; i < 3; i++) {
+            const ne = this.spawnEnemy('leafling', 0, e.path.idx, Math.max(0, e.d - 20 - i * 12));
+            ne.stunT = 0.5;
+          }
+          for (let i = 0; i < 2; i++) {
+            const ne = this.spawnEnemy('bulbmin', 1, e.path.idx, Math.max(0, e.d - 50 - i * 10));
+            ne.stunT = 0.5;
+          }
+          this.floater('Leaflings, go!', e.x, e.y - 90, '#9be15d', 15);
+          this.effect({ kind: 'ring', x: e.x, y: e.y, r0: 10, r1: 150, dur: 0.8, col: '#9be15d' });
+          sfx('bossroar');
+        }
       } else if (ab === 'summon' && e.abilityT <= 0) {
         e.abilityT = 9;
         const kinds = ['red', 'yellow', 'blue', 'purple', 'white'];
@@ -297,12 +371,19 @@
       if (e.dead) return 0;
       let a = amount;
       const d = e.def;
-      if (dtype === 'phys') a *= 1 - (d.armor || 0);
-      else if (dtype === 'magic') a *= 1 - (d.mres || 0);
+      if (dtype === 'phys') {
+        const pierce = source && source.family ? this.fam(source.family).pierce : 0;
+        a *= 1 - (d.armor || 0) * (1 - pierce);
+      } else if (dtype === 'magic') a *= 1 - (d.mres || 0);
       else if (dtype === 'fire') a *= (1 - (d.mres || 0)) * (1 - (d.fireRes || 0));
+      else if (dtype === 'elec') {
+        if (d.elecImmune) return 0;
+        a *= 1 - (d.mres || 0) * 0.5;
+      }
+      if (e.rallyT > 0) a *= 0.75;
       e.hp -= a;
       if (!silent) e.flashT = 0.08;
-      if (source && source.isHero) this.heroXp(a * 0.5);
+      if (source && source.isHero) this.heroXp(Math.max(0, Math.min(a, e.hp + a)) * 0.25);
       if (e.hp <= 0) this.kill(e, source);
       return a;
     }
@@ -311,13 +392,27 @@
       if (e.dead) return;
       e.dead = true;
       this.releaseEnemy(e);
-      const reward = Math.round((e.def.reward + (e.def.pik ? TIER.reward[e.tier] : 0)) * this.diff.gold);
+      const reward = Math.round((e.def.reward + (e.def.pik ? TIER.reward[e.tier] : 0)) * this.diff.gold * (e.rewardMul || 1));
       this.gold += reward;
       this.stats.kills++;
-      if (killer && killer.isHero) this.heroXp(e.def.captain ? 60 : 8);
+      if (killer && killer.isHero) this.heroXp(e.def.captain ? 40 : 6);
       if (e.def.pik) {
         this.effect({ kind: 'ghost', x: e.x, y: e.y - (e.flying ? 22 : 0), t: 0, dur: 1.6, type: e.type });
         sfx('die');
+      } else if (e.def.split) {
+        // leaflings burst into leaves — and, if full-sized, into two smaller leaflings
+        for (let i = 0; i < 12; i++) this.particle('leafBurst', e.x + U.rand(-8, 8), e.y - U.rand(10, 30), U.pick(['#5cc443', '#3f8a2c', '#8fd35a', '#c9b43a']));
+        if (!e.small) {
+          for (let i = 0; i < 2; i++) {
+            const ne = this.spawnEnemy(e.type, 0, e.path.idx, Math.max(0, e.d - 6 - i * 12));
+            ne.small = true; ne.sz = 0.72;
+            ne.hp = ne.maxHp = Math.round(ne.maxHp * 0.45);
+            ne.rewardMul = 0.35;
+            ne.stunT = 0.4;
+          }
+          this.floater('Split!', e.x, e.y - 40, '#9be15d', 13);
+        }
+        sfx('leaf');
       } else {
         this.effect({ kind: 'ko', x: e.x, y: e.y, t: 0, dur: 2.2, type: e.type, flip: e.dx < 0 });
         sfx('captainDown');
@@ -333,16 +428,22 @@
     }
 
     /* ======================= TOWERS ======================= */
-    towerCost(id) { return T[id].cost; }
+    /** star-tree modifiers for a family / 'spells' (all zero when nothing bought) */
+    fam(id) {
+      return (this.meta && this.meta[id]) || ZERO_MODS;
+    }
+
+    towerCost(id) { return Math.round(T[id].cost * (1 + this.fam(T[id].family).cost)); }
 
     build(spot, id) {
       const def = T[id];
-      if (spot.tower || this.gold < def.cost) { sfx('deny'); return false; }
-      this.gold -= def.cost;
+      const cost = this.towerCost(id);
+      if (spot.tower || this.gold < cost) { sfx('deny'); return false; }
+      this.gold -= cost;
       const t = {
         uid: UID++, spot, id, def, family: def.family, tier: def.tier,
         x: spot.x, y: spot.y, cd: 0.4, face: 1, atkT: 0, anim: Math.random() * 10,
-        invested: def.cost, pending: null, burstLeft: 0, burstT: 0, abilityT: def.abilityCd || 0,
+        invested: cost, pending: null, burstLeft: 0, burstT: 0, abilityT: def.abilityCd || 0,
         units: [], rally: null, buildT: 0, away: false,
       };
       spot.tower = t;
@@ -356,9 +457,10 @@
 
     upgrade(t, id) {
       const def = T[id];
-      if (!t.def.next.includes(id) || this.gold < def.cost) { sfx('deny'); return false; }
-      this.gold -= def.cost;
-      t.id = id; t.def = def; t.tier = def.tier; t.invested += def.cost;
+      const cost = this.towerCost(id);
+      if (!t.def.next.includes(id) || this.gold < cost) { sfx('deny'); return false; }
+      this.gold -= cost;
+      t.id = id; t.def = def; t.tier = def.tier; t.invested += cost;
       t.abilityT = def.abilityCd || 0;
       t.buildT = 0;
       if (def.family === 'den') this.setupDen(t, false);
@@ -387,11 +489,24 @@
       return dx * dx + dy * dy <= range * range;
     }
 
+    /** effective range of a tower (star tree + darkness in caves) */
+    towerRange(t) {
+      return this.rangeAt(t.def, t.x, t.y);
+    }
+
+    rangeAt(def, x, y) {
+      let r = def.range * (1 + this.fam(def.family).range);
+      if (this.inDark && this.inDark(x, y)) r *= 0.75;
+      return r;
+    }
+
     acquire(t, range, air) {
       let best = null, bestRem = 1e9;
+      const elec = t.def.dtype === 'elec';
       for (const e of this.enemies) {
         if (e.dead || e.carried || e.d < 0) continue;
         if (e.flying && !air) continue;
+        if (elec && e.def.elecImmune) continue;
         if (!this.inRange(t, e, range)) continue;
         const rem = e.path.len - e.d;
         if (rem < bestRem) { bestRem = rem; best = e; }
@@ -421,7 +536,7 @@
           t.burstT -= dt;
           if (t.burstT <= 0) {
             let tg = t.burstTarget;
-            if (!tg || tg.dead || !this.inRange(t, tg, def.range + 20)) tg = t.burstTarget = this.acquire(t, def.range, def.air);
+            if (!tg || tg.dead || !this.inRange(t, tg, this.towerRange(t) + 20)) tg = t.burstTarget = this.acquire(t, this.towerRange(t), def.air);
             if (tg) { this.fire(t, tg); t.face = tg.x >= t.x ? 1 : -1; t.atkT = 0.001; }
             t.burstLeft--;
             t.burstT = def.burstGap;
@@ -435,7 +550,7 @@
             t.pending = null;
             if (!tg.dead) this.fire(t, tg);
             else {
-              const alt = this.acquire(t, def.range + 10, def.air);
+              const alt = this.acquire(t, this.towerRange(t) + 10, def.air);
               if (alt) this.fire(t, alt);
             }
           }
@@ -447,9 +562,9 @@
           t.abilityT = 0.5;
         }
         if (t.cd <= 0) {
-          const tg = this.acquire(t, def.range, def.air);
+          const tg = this.acquire(t, this.towerRange(t), def.air);
           if (tg) {
-            t.cd = def.rate;
+            t.cd = def.rate / (1 + this.fam(t.family).rate);
             t.face = tg.x >= t.x ? 1 : -1;
             t.atkT = 0.001;
             if (def.burst) { t.burstLeft = def.burst; t.burstT = 0; t.burstTarget = tg; }
@@ -463,9 +578,13 @@
     fire(t, tg) {
       const def = t.def;
       const m = this.muzzle(t);
-      const dmg = U.rand(def.dmg[0], def.dmg[1]);
+      const fm = this.fam(t.family);
+      const dmg = U.rand(def.dmg[0], def.dmg[1]) * (1 + fm.dmg);
       const ty = tg.y - (tg.flying ? 34 : 12);
       switch (def.attack) {
+        case 'zap':
+          this.fireZap(t, tg, dmg);
+          break;
         case 'pebble':
           this.projectiles.push({ kind: 'pebble', x: m.x, y: m.y, target: tg, speed: 430, dmg, dtype: 'phys', src: t, arc: 18, sx: m.x, sy: m.y, prog: 0 });
           for (let i = 0; i < 3; i++) this.particle('smoke', m.x, m.y);
@@ -481,7 +600,7 @@
           sfx('pew');
           break;
         case 'fireball':
-          this.projectiles.push({ kind: 'fireball', x: m.x, y: m.y, target: tg, speed: 300, dmg, dtype: 'fire', src: t, burn: def.burn });
+          this.projectiles.push({ kind: 'fireball', x: m.x, y: m.y, target: tg, speed: 300, dmg, dtype: 'fire', src: t, burn: def.burn * (1 + fm.burn), splashR: 26 * (1 + fm.splash) });
           for (let i = 0; i < 6; i++) this.particle('ember', m.x, m.y);
           sfx('fire');
           break;
@@ -497,7 +616,7 @@
           const dist = U.dist(m.x, m.y, tg.x, tg.y);
           const dur = 0.75 + dist / 600;
           const p = this.predict(tg, dur);
-          this.projectiles.push({ kind: 'boulder', sx: m.x, sy: m.y, tx: p.x, ty: p.y, x: m.x, y: m.y, t: 0, dur, dmg, dtype: 'phys', src: t, splash: def.splash, h: 90 + dist * 0.25, size: 0.6 + def.tier * 0.12 });
+          this.projectiles.push({ kind: 'boulder', sx: m.x, sy: m.y, tx: p.x, ty: p.y, x: m.x, y: m.y, t: 0, dur, dmg, dtype: 'phys', src: t, splash: def.splash * (1 + fm.splash), stun: fm.stun, h: 90 + dist * 0.25, size: 0.6 + def.tier * 0.12 });
           for (let i = 0; i < 6; i++) this.particle('smoke', m.x, m.y);
           sfx('cannon');
           break;
@@ -508,7 +627,7 @@
           const p = this.predict(tg, dur);
           t.away = true;
           const ph = PTD.Art.PLAT_H[t.tier];
-          this.effect({ kind: 'wolly', sx: t.x, sy: t.y - ph, tx: p.x, ty: p.y, t: 0, dur, back: dur * 0.8, tower: t, dmg, splash: def.splash, stun: def.stun, face: p.x >= t.x ? 1 : -1, landed: false });
+          this.effect({ kind: 'wolly', sx: t.x, sy: t.y - ph, tx: p.x, ty: p.y, t: 0, dur, back: dur * 0.8, tower: t, dmg, splash: def.splash * (1 + fm.splash), stun: def.stun + fm.stun, face: p.x >= t.x ? 1 : -1, landed: false });
           sfx('croak');
           break;
         }
@@ -522,7 +641,7 @@
         let best = null;
         for (const e of this.enemies) {
           if (e.dead || e.carried || e.def.big || e.d < 0) continue;
-          if (!this.inRange(t, e, def.range)) continue;
+          if (!this.inRange(t, e, this.towerRange(t))) continue;
           if (!best || e.hp > best.hp) best = e;
         }
         if (!best) return false;
@@ -534,8 +653,9 @@
         sfx('snatch');
         return true;
       }
+      if (def.ability === 'web') return this.webAbility(t);
       if (def.ability === 'gust') {
-        const tg = this.acquire(t, def.range, false);
+        const tg = this.acquire(t, this.towerRange(t), false);
         if (!tg) return false;
         t.face = tg.x >= t.x ? 1 : -1;
         t.atkT = 0.001;
@@ -552,11 +672,11 @@
         return true;
       }
       if (def.ability === 'roll') {
-        const tg = this.acquire(t, def.range, false);
+        const tg = this.acquire(t, this.towerRange(t), false);
         if (!tg) return false;
         t.face = tg.x >= t.x ? 1 : -1;
         t.atkT = 0.001;
-        this.effect({ kind: 'roll', path: tg.path, d: tg.d + 30, lane: 0, dist: 0, max: 300, t: 0, hit: new Set(), x: tg.x, y: tg.y, rot: 0, src: t });
+        this.effect({ kind: 'roll', path: tg.path, d: tg.d + 30, lane: 0, dist: 0, max: 300, t: 0, hit: new Set(), x: tg.x, y: tg.y, rot: 0, src: t, dmg: 70 * (1 + this.fam('cannon').dmg) });
         sfx('cannon');
         return true;
       }
@@ -603,10 +723,12 @@
     }
 
     makeSoldier(t, i, def) {
+      const m = this.fam('den');
+      const hp = Math.round(def.hp * (1 + m.hp));
       return {
         uid: UID++, isUnit: true, tower: t, slot: i, kind: def.soldier,
-        hp: def.hp, maxHp: def.hp, dmg: def.dmg, rate: def.rate, armor: def.armor || 0,
-        regen: def.regen || def.hp * 0.06, respawn: def.respawn,
+        hp, maxHp: hp, dmg: def.dmg, dmgMul: 1 + m.dmg, rate: def.rate, armor: Math.min(0.8, (def.armor || 0) + m.armor),
+        regen: (def.regen || def.hp * 0.06) * (1 + m.hp), respawn: def.respawn * (1 + m.respawn),
         x: t.x, y: t.y, face: 1, cd: U.rand(0, 0.6), target: null, dead: false, respawnT: 0,
         walk: Math.random(), atkAnim: 0, idleT: 0, stunT: 0, flashT: 0,
         ability: def.ability, abilityT: U.rand(3, def.abilityCd || 10), speed: 72, engage: 62,
@@ -621,7 +743,8 @@
 
     setRally(t, x, y) {
       const dx = x - t.x, dy = (y - t.y) / 0.8;
-      if (dx * dx + dy * dy > t.def.range * t.def.range) return false;
+      const rr = this.towerRange(t);
+      if (dx * dx + dy * dy > rr * rr) return false;
       if (this.lv.distToPath(x, y) > 40) return false;
       t.rally = { x, y };
       for (const u of t.units) this.releaseUnit(u);
@@ -793,13 +916,34 @@
     makeHero() {
       const H = PTD.HERO;
       const s = this.lv.heroStart;
-      return {
-        uid: UID++, isUnit: true, isHero: true, kind: 'emperor', level: 1, xp: 0, xpNext: 120,
+      const sk = this.heroSkills || {};
+      const totalXp = this.heroXpStart || 0;
+      const level = PTD.Progress ? PTD.Progress.levelForXp(totalXp) : 1;
+      const h = {
+        uid: UID++, isUnit: true, isHero: true, kind: 'emperor', level, xp: 0, xpNext: 120, totalXp,
         hp: H.hp, maxHp: H.hp, dmg: H.dmg, rate: H.rate, armor: H.armor, regen: H.regen, respawn: H.respawn,
         x: s.x, y: s.y, gx: s.x, gy: s.y, face: 1, cd: 0, target: null, dead: false, respawnT: 0,
         walk: 0, atkAnim: 0, idleT: 0, stunT: 0, flashT: 0, speed: H.speed, engage: H.engage, dmgMul: 1,
-        tongueT: 5, quakeT: 8, tongueAnim: 0, moveOrder: false,
+        tongueT: 5, quakeT: 8, roarT: 6, tongueAnim: 0, moveOrder: false,
+        sk: { tongue: sk.tongue || 0, quake: sk.quake || 0, hide: sk.hide || 0, roar: sk.roar || 0 },
       };
+      this.applyHeroLevel(h);
+      h.hp = h.maxHp;
+      return h;
+    }
+
+    /** recompute the Emperor's stats from his level and Royal Hide rank */
+    applyHeroLevel(h) {
+      const H = PTD.HERO;
+      const hide = h.sk.hide;
+      h.maxHp = Math.round(H.hp * (1 + (h.level - 1) * 0.12) * (1 + 0.15 * hide));
+      h.dmgMul = 1 + (h.level - 1) * 0.1;
+      h.armor = Math.min(0.7, H.armor + 0.06 * hide);
+      h.regen = H.regen * (1 + 0.5 * hide);
+      const XP = PTD.HERO_XP || [0, 0, 200];
+      const cap = PTD.HERO_MAX_LEVEL || 10;
+      h.xp = h.totalXp - (XP[h.level] || 0);
+      h.xpNext = h.level >= cap ? 0 : XP[h.level + 1] - XP[h.level];
     }
 
     moveHero(x, y) {
@@ -816,53 +960,82 @@
 
     heroXp(v) {
       const h = this.hero;
-      if (h.level >= 5) return;
-      h.xp += v;
-      while (h.xp >= h.xpNext && h.level < 5) {
-        h.xp -= h.xpNext;
+      const XP = PTD.HERO_XP || [0, 0, 200];
+      const cap = PTD.HERO_MAX_LEVEL || 10;
+      if (h.level >= cap || !(v > 0)) return;
+      h.totalXp = Math.min(XP[cap], h.totalXp + v);
+      while (h.level < cap && h.totalXp >= XP[h.level + 1]) {
         h.level++;
-        h.xpNext = Math.round(h.xpNext * 1.6);
-        h.maxHp = Math.round(PTD.HERO.hp * (1 + (h.level - 1) * 0.18));
-        h.hp = h.maxHp;
-        h.dmgMul = 1 + (h.level - 1) * 0.2;
+        const frac = h.hp / h.maxHp;
+        this.applyHeroLevel(h);
+        h.hp = Math.max(h.maxHp * frac, h.maxHp * 0.5);
         this.floater('LEVEL UP!', h.x, h.y - 60, '#ffe066', 18);
+        this.floater('+1 skill point', h.x, h.y - 40, '#c9a2ff', 12);
         for (let i = 0; i < 16; i++) this.particle('spark', h.x + U.rand(-20, 20), h.y - U.rand(0, 50), '#ffe066');
         sfx('upgrade');
         this.emit('heroLevel', h.level);
       }
+      this.applyHeroLevel(h);
     }
 
     heroAbilities(h) {
       if (h.dead) return;
-      // tongue lash: hits up to 4 enemies (incl. flyers) in front
+      const sk = h.sk;
+      // tongue lash: hits several enemies (incl. flyers) in front
       if (h.tongueT <= 0) {
-        const targets = this.enemies.filter((e) => !e.dead && !e.carried && e.d >= 0 && U.dist(e.x, e.y, h.x, h.y) < 95).slice(0, 4);
+        const maxN = 4 + sk.tongue;
+        const targets = this.enemies.filter((e) => !e.dead && !e.carried && e.d >= 0 && U.dist(e.x, e.y, h.x, h.y) < 95).slice(0, maxN);
         if (targets.length >= 1 && (targets.length >= 2 || targets[0].def.captain || targets[0].flying)) {
-          h.tongueT = 9;
+          h.tongueT = sk.tongue >= 3 ? 6 : 9;
           h.tongueAnim = 1;
           h.face = targets[0].x >= h.x ? 1 : -1;
           for (const e of targets) {
-            this.damage(e, 45 * h.dmgMul, 'phys', h);
+            this.damage(e, 45 * h.dmgMul * (1 + 0.3 * sk.tongue), 'phys', h);
             this.particle('spark', e.x, e.y - 14, '#ff9fb0');
           }
           sfx('chomp');
           this.floater('Tongue Lash!', h.x, h.y - 56, '#ff9fb0', 13);
         }
       }
+      const qr = 85 + 14 * sk.quake;
       if (h.quakeT <= 0 && h.target) {
-        const n = this.enemies.filter((e) => !e.dead && !e.flying && U.dist(e.x, e.y, h.x, h.y) < 85).length;
+        const n = this.enemies.filter((e) => !e.dead && !e.flying && U.dist(e.x, e.y, h.x, h.y) < qr).length;
         if (n >= 2) {
           h.quakeT = 14;
           h.atkAnim = 1;
           for (const e of this.enemies) {
-            if (e.dead || e.flying || U.dist(e.x, e.y, h.x, h.y) > 85) continue;
-            this.damage(e, 35 * h.dmgMul, 'phys', h);
-            if (!e.def.boss) e.stunT = Math.max(e.stunT, 1.5);
+            if (e.dead || e.flying || U.dist(e.x, e.y, h.x, h.y) > qr) continue;
+            this.damage(e, 35 * h.dmgMul * (1 + 0.3 * sk.quake), 'phys', h);
+            if (!e.def.boss) e.stunT = Math.max(e.stunT, 1.5 + 0.5 * sk.quake);
           }
-          this.effect({ kind: 'quake', x: h.x, y: h.y, t: 0, dur: 0.7 });
+          this.effect({ kind: 'quake', x: h.x, y: h.y, t: 0, dur: 0.7, r: qr });
           this.shake = 0.35;
           sfx('boom');
           this.floater('Earthquake!', h.x, h.y - 60, '#ffd38a', 14);
+        }
+      }
+      // royal roar (skill): push nearby Pikmin back down the trail
+      if (sk.roar > 0 && h.roarT <= 0) {
+        const R = 120;
+        const near = this.enemies.filter((e) => !e.dead && !e.carried && e.d >= 0 && !e.flying && U.dist(e.x, e.y, h.x, h.y) < R);
+        if (near.length >= 3) {
+          h.roarT = 21 - 3 * sk.roar;
+          h.tongueAnim = 1;
+          for (const e of near) {
+            if (e.def.boss) continue;
+            if (!e.def.big) this.pushBack(e, 40 + 25 * sk.roar);
+            else if (sk.roar >= 3) e.stunT = Math.max(e.stunT, 1.2);
+          }
+          if (sk.roar >= 2) {
+            for (const u of this.units) {
+              if (!u.dead && !u.removed && U.dist(u.x, u.y, h.x, h.y) < R * 1.4) { u.hp = Math.min(u.maxHp, u.hp + u.maxHp * 0.3); this.particle('heal', u.x, u.y - 20); }
+            }
+          }
+          this.effect({ kind: 'ring', x: h.x, y: h.y, r0: 20, r1: R, dur: 0.6, col: '#ffe3a0', ground: true });
+          this.effect({ kind: 'ring', x: h.x, y: h.y - 30, r0: 10, r1: R * 0.8, dur: 0.5, col: '#ffffff' });
+          this.shake = 0.3;
+          sfx('bossroar');
+          this.floater('ROAR!', h.x, h.y - 66, '#ffe3a0', 16);
         }
       }
     }
@@ -871,6 +1044,7 @@
       const h = this.hero;
       h.tongueT -= dt;
       h.quakeT -= dt;
+      h.roarT -= dt;
       if (h.tongueAnim > 0) h.tongueAnim = Math.max(0, h.tongueAnim - dt / 0.5);
       const wasDead = h.dead;
       this.updateUnit(h, dt, h.gx, h.gy, h.gx, h.gy);
@@ -878,12 +1052,15 @@
     }
 
     /* ======================= SPELLS ======================= */
+    snagretRadius() { return PTD.SPELLS.snagret.radius * (1 + this.fam('spells').snagRadius); }
+
     castSpell(id, x, y) {
       const sp = this.spells[id];
       if (sp.cd > 0) { sfx('deny'); return false; }
       if (id === 'snagret') {
         sp.cd = sp.max;
-        this.effect({ kind: 'snagret', x, y, t: 0, pecks: 0, dir: x < PTD.W / 2 ? 1 : -1 });
+        const sm = this.fam('spells');
+        this.effect({ kind: 'snagret', x, y, t: 0, pecks: 0, dir: x < PTD.W / 2 ? 1 : -1, radius: this.snagretRadius(), extraPeck: sm.snagPecks > 0 });
         sfx('snagret');
         return true;
       }
@@ -891,11 +1068,16 @@
         if (this.lv.distToPath(x, y) > 50) { sfx('deny'); return false; }
         sp.cd = sp.max;
         const S = PTD.SPELLS.reinforce;
-        for (let i = 0; i < S.count; i++) {
+        const sm = this.fam('spells');
+        const n = S.count + sm.reinfCount;
+        const hp = Math.round(S.hp * (1 + sm.reinfHp));
+        const OFFS = [[-12, -2], [12, 4], [0, 12]];
+        for (let i = 0; i < n; i++) {
+          const o = OFFS[i % OFFS.length];
           const u = {
-            uid: UID++, isUnit: true, kind: 'reinf', hp: S.hp, maxHp: S.hp, dmg: S.dmg, rate: 1, armor: 0, regen: 3, respawn: 0,
-            x: x + (i ? 12 : -12), y: y + (i ? 4 : -2), face: 1, cd: 0, target: null, dead: false, walk: 0, atkAnim: 0, idleT: 0,
-            stunT: 0, flashT: 0, speed: 70, engage: 70, ttl: S.ttl, hx: x + (i ? 12 : -12), hy: y + (i ? 4 : -2), slot: i,
+            uid: UID++, isUnit: true, kind: 'reinf', hp, maxHp: hp, dmg: S.dmg, rate: 1, armor: 0, regen: 3, respawn: 0,
+            x: x + o[0], y: y + o[1], face: 1, cd: 0, target: null, dead: false, walk: 0, atkAnim: 0, idleT: 0,
+            stunT: 0, flashT: 0, speed: 70, engage: 70, ttl: S.ttl + sm.reinfTtl, hx: x + o[0], hy: y + o[1], slot: i,
           };
           this.units.push(u);
           for (let k = 0; k < 10; k++) this.particle('dust', u.x, u.y);
@@ -918,7 +1100,7 @@
           p.rot = (p.rot || 0) + dt * 6;
           if (k >= 1) {
             p.done = true;
-            this.splash(p.tx, p.ty, p.splash, p.dmg, 'phys', p.src, false);
+            this.splash(p.tx, p.ty, p.splash, p.dmg, 'phys', p.src, false, p.stun);
             this.explosion(p.tx, p.ty, 'dirt');
             this.decal(p.tx, p.ty, 'crater');
             sfx('boom');
@@ -963,7 +1145,7 @@
           this.damage(e, p.dmg, 'fire', p.src);
           if (!e.dead) { e.burnT = 3; e.burnDps = p.burn; }
           // small splash
-          for (const o of this.enemies) if (o !== e && !o.dead && U.dist(o.x, o.y, e.x, e.y) < 26) this.damage(o, p.dmg * 0.4, 'fire', p.src);
+          for (const o of this.enemies) if (o !== e && !o.dead && U.dist(o.x, o.y, e.x, e.y) < (p.splashR || 26)) this.damage(o, p.dmg * 0.4, 'fire', p.src);
           this.explosion(p.x, p.y, 'fire');
           break;
         case 'frost':
@@ -993,7 +1175,7 @@
       this.floater('Withered!', e.x, e.y - 40, '#cdd3ff', 11);
     }
 
-    splash(x, y, r, dmg, dtype, src, air) {
+    splash(x, y, r, dmg, dtype, src, air, stun) {
       for (const e of this.enemies) {
         if (e.dead || e.carried || e.d < 0) continue;
         if (e.flying && !air) continue;
@@ -1001,6 +1183,7 @@
         if (d > r) continue;
         const f = d < r * 0.4 ? 1 : 1 - (d - r * 0.4) / (r * 0.6) * 0.5;
         this.damage(e, dmg * f, dtype, src);
+        if (stun && !e.dead && !e.def.boss) e.stunT = Math.max(e.stunT, stun);
       }
     }
 
@@ -1011,8 +1194,12 @@
       for (const f of this.effects) {
         f.t += dt;
         switch (f.kind) {
-          case 'ring': case 'flag': case 'quake': case 'gust':
+          case 'ring': case 'flag': case 'quake': case 'gust': case 'bolt': case 'eruption':
             if (f.t >= f.dur) f.done = true;
+            break;
+          case 'web':
+            this.updateWeb(f, dt);
+            if (!this.towers.includes(f.src)) f.done = true;
             break;
           case 'ghost':
             if (f.t >= f.dur) f.done = true;
@@ -1021,14 +1208,14 @@
             if (f.t >= f.dur) f.done = true;
             break;
           case 'snagret': {
-            // timeline: 0-0.35 rise, pecks at 0.5,0.8,1.1, retract 1.3-1.6
+            // timeline: 0-0.35 rise, pecks at 0.5,0.82,1.14(,1.46), retract afterwards
             const S = PTD.SPELLS.snagret;
-            const peckTimes = [0.5, 0.82, 1.14];
+            const peckTimes = f.extraPeck ? [0.5, 0.82, 1.14, 1.46] : [0.5, 0.82, 1.14];
             while (f.pecks < peckTimes.length && f.t >= peckTimes[f.pecks]) {
               f.pecks++;
               for (const e of this.enemies) {
                 if (e.dead || e.flying || e.d < 0) continue;
-                if (U.dist(e.x, (e.y - f.y) / 0.8 + f.y, f.x, f.y) > S.radius) continue;
+                if (U.dist(e.x, (e.y - f.y) / 0.8 + f.y, f.x, f.y) > (f.radius || S.radius)) continue;
                 this.damage(e, U.rand(S.dmg[0], S.dmg[1]), 'phys', null);
                 if (!e.def.boss) e.stunT = Math.max(e.stunT, 0.5);
               }
@@ -1038,7 +1225,7 @@
               sfx('peck');
             }
             if (f.t < 0.1 && !f.dusted) { f.dusted = true; for (let i = 0; i < 18; i++) this.particle('dirt', f.x + U.rand(-20, 20), f.y); }
-            if (f.t >= 1.7) f.done = true;
+            if (f.t >= (f.extraPeck ? 2.0 : 1.7)) f.done = true;
             break;
           }
           case 'snatch': {
@@ -1159,7 +1346,7 @@
               if (e.dead || e.flying || f.hit.has(e.uid)) continue;
               if (U.dist(e.x, e.y, f.x, f.y) < 26) {
                 f.hit.add(e.uid);
-                this.damage(e, 70, 'phys', f.src);
+                this.damage(e, f.dmg || 70, 'phys', f.src);
                 if (!e.def.boss) e.stunT = Math.max(e.stunT, 0.6);
                 this.particle('dust', e.x, e.y);
               }
@@ -1198,6 +1385,11 @@
         case 'splash': p.vx = U.rand(-90, 90); p.vy = U.rand(-150, -50); p.g = 400; p.max = U.rand(0.4, 0.7); p.size = U.rand(2, 4); p.col = U.pick(['#9fd8ff', '#ffffff', '#6fc0f0']); break;
         case 'leafAmb': p.vx = U.rand(10, 30); p.vy = U.rand(12, 26); p.max = U.rand(6, 10); p.size = U.rand(3, 5); p.vr = U.rand(-2, 2); break;
         case 'firefly': p.vx = U.rand(-8, 8); p.vy = U.rand(-8, 8); p.max = U.rand(4, 8); p.size = 2; p.col = '#eaff7a'; break;
+        case 'leafBurst': p.vx = U.rand(-90, 90); p.vy = U.rand(-120, -30); p.g = 140; p.max = U.rand(0.6, 1.1); p.size = U.rand(3, 5); p.vr = U.rand(-8, 8); break;
+        case 'snow': p.vx = U.rand(-12, 6); p.vy = U.rand(18, 34); p.max = U.rand(8, 14); p.size = U.rand(1.4, 3); p.col = '#ffffff'; break;
+        case 'ash': p.vx = U.rand(-10, 10); p.vy = U.rand(-30, -12); p.max = U.rand(3, 6); p.size = U.rand(1.5, 3); p.col = U.pick(['#ff9a2a', '#ffcf5a', '#ff5a1f']); break;
+        case 'mote': p.vx = U.rand(-6, 6); p.vy = U.rand(-8, 4); p.max = U.rand(4, 8); p.size = U.rand(1.2, 2.2); p.col = U.pick(['#9fe8ff', '#c9a2ff']); break;
+        case 'drop': p.vx = 0; p.vy = 40; p.g = 500; p.max = 0.7; p.size = 1.6; p.col = '#9fd8ff'; break;
       }
       this.particles.push(p);
     }
@@ -1212,6 +1404,8 @@
         if (p.type === 'smoke' || p.type === 'wisp' || p.type === 'poison') { p.size += dt * 8; p.vx *= 0.96; }
         if (p.type === 'leafAmb') p.vx += Math.sin(p.life * 2 + p.rot) * 20 * dt;
         if (p.type === 'firefly') { p.vx += U.rand(-30, 30) * dt; p.vy += U.rand(-30, 30) * dt; }
+        if (p.type === 'snow' || p.type === 'ash') p.vx += Math.sin(p.life * 1.7 + p.rot) * 14 * dt;
+        if (p.type === 'mote') { p.vx += U.rand(-12, 12) * dt; p.vy += U.rand(-12, 12) * dt; }
       }
       this.particles = this.particles.filter((p) => p.life < p.max);
     }
@@ -1261,6 +1455,7 @@
       this.time += dt;
       for (const k in this.spells) this.spells[k].cd = Math.max(0, this.spells[k].cd - dt);
       this.updateWaves(dt);
+      if (this.updateBiome) this.updateBiome(dt);
       this.updateEnemies(dt);
       this.updateTowers(dt);
       for (const u of this.units.slice()) {
@@ -1280,6 +1475,7 @@
       if (th === 'forest' && Math.random() < dt * 1.2) this.particle('leafAmb', U.rand(-50, PTD.W), -10, U.pick(['#e4782b', '#d6452a', '#f2b33a']));
       if (th === 'twilight' && this.particles.filter((p) => p.type === 'firefly').length < 26 && Math.random() < dt * 4) this.particle('firefly', U.rand(0, PTD.W), U.rand(80, PTD.H));
       if (th === 'meadow' && Math.random() < dt * 0.4) this.particle('leafAmb', U.rand(-50, PTD.W), -10, '#ffffff');
+      if (this.ambientBiome) this.ambientBiome(dt);
     }
 
     updateFloaters(dt) {

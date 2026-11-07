@@ -36,42 +36,75 @@ export function paintMap(): HTMLCanvasElement {
     g.fillStyle = U.rgba(rng() < 0.5 ? '#5f9a3a' : '#c6e486', 0.12);
     g.beginPath(); H.ell(g, rng() * W, rng() * Hh, rng.range(20, 60), rng.range(10, 30)); g.fill();
   }
-  // autumn forest region
+  // sandy beach on the south-east shore (Serene Shores)
+  g.fillStyle = '#f0dca0';
+  g.beginPath(); H.ell(g, 1090, 620, 230, 120); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.5)';
+  for (let i = 0; i < 6; i++) { g.beginPath(); H.ell(g, 960 + i * 40, 650 + (i % 2) * 10, 8, 3); g.fill(); }
+  for (let i = 0; i < 5; i++) Art.Props.shell(g, 940 + rng.range(0, 220), 600 + rng.range(0, 60), 0.9, rng);
+  // autumn forest region (Awakening Wood)
   for (let i = 0; i < 26; i++) {
-    const x = 430 + rng.range(-120, 140), y = 300 + rng.range(-80, 60);
+    const x = 430 + rng.range(-120, 120), y = 320 + rng.range(-80, 50);
     tree(g, x, y, rng.range(0.7, 1.1), rng.pick(['#e4782b', '#d6452a', '#f2b33a', '#6aa53f']));
   }
-  // lake
-  g.beginPath(); H.wobble(g, 860, 520, 110, 55, U.rng(9), 12, 0.15);
+  // lake (Perplexing Pool)
+  g.beginPath(); H.wobble(g, 730, 575, 105, 50, U.rng(9), 12, 0.15);
   g.fillStyle = '#6fbfe6'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = OUT; g.stroke();
   g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 2;
-  for (let i = 0; i < 6; i++) { const x = 800 + i * 22, y = 510 + (i % 2) * 14; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 6, y - 4, x + 12, y); g.stroke(); }
-  // twilight hills (darker) top-right
-  g.fillStyle = 'rgba(40,60,110,0.25)';
-  g.beginPath(); H.ell(g, 1050, 250, 170, 110); g.fill();
-  for (let i = 0; i < 4; i++) {
-    const x = 1110 + i * 46, y = 150 + (i % 2) * 22;
-    g.beginPath(); g.moveTo(x - 40, y + 30); g.lineTo(x, y - 30); g.lineTo(x + 40, y + 30); g.closePath();
-    g.fillStyle = '#8c8fa6'; g.fill(); g.lineWidth = 2.2; g.strokeStyle = OUT; g.stroke();
-    g.beginPath(); g.moveTo(x - 12, y - 12); g.lineTo(x, y - 30); g.lineTo(x + 12, y - 12); g.closePath(); g.fillStyle = '#ffffff'; g.fill();
+  for (let i = 0; i < 6; i++) { const x = 670 + i * 22, y = 565 + (i % 2) * 14; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 6, y - 4, x + 12, y); g.stroke(); }
+  // twilight hollow (darker woods)
+  g.fillStyle = 'rgba(40,60,110,0.28)';
+  g.beginPath(); H.ell(g, 850, 340, 120, 85); g.fill();
+  for (let i = 0; i < 10; i++) tree(g, 850 + rng.range(-90, 90), 340 + rng.range(-50, 50), rng.range(0.6, 0.85), '#2f6b4c');
+  // frozen tundra (Distant Tundra)
+  g.fillStyle = '#eef4fa';
+  g.beginPath(); H.wobble(g, 1145, 300, 120, 100, U.rng(17), 12, 0.12); g.fill();
+  g.lineWidth = 2; g.strokeStyle = 'rgba(120,150,190,0.6)'; g.stroke();
+  for (let i = 0; i < 3; i++) {
+    const x = 1110 + i * 44, y = 215 + (i % 2) * 18;
+    g.beginPath(); g.moveTo(x - 38, y + 30); g.lineTo(x, y - 30); g.lineTo(x + 38, y + 30); g.closePath();
+    g.fillStyle = '#9aa3bc'; g.fill(); g.lineWidth = 2.2; g.strokeStyle = OUT; g.stroke();
+    g.beginPath(); g.moveTo(x - 14, y - 9); g.lineTo(x, y - 30); g.lineTo(x + 14, y - 9); g.closePath(); g.fillStyle = '#ffffff'; g.fill();
   }
-  // meadow flowers
+  for (let i = 0; i < 6; i++) Art.Props.pine(g, 1090 + rng.range(0, 120), 320 + rng.range(0, 50), 0.6);
+  // volcano (Giant's Hearth)
+  g.save(); g.translate(1010, 175);
+  g.beginPath(); g.moveTo(-80, 30); g.lineTo(-22, -46); g.lineTo(22, -46); g.lineTo(80, 30); g.closePath();
+  g.fillStyle = H.lin(g, -80, 0, 80, 0, [[0, '#6b4a3a'], [0.5, '#8a6448'], [1, '#4a3024']]); g.fill();
+  g.lineWidth = 2.4; g.strokeStyle = OUT; g.stroke();
+  g.beginPath(); H.ell(g, 0, -46, 22, 6); g.fillStyle = '#ff7a2a'; g.fill(); g.stroke();
+  g.strokeStyle = '#ff8a2a'; g.lineWidth = 4;
+  g.beginPath(); g.moveTo(-6, -42); g.quadraticCurveTo(-14, -14, -28, 6); g.moveTo(8, -42); g.quadraticCurveTo(18, -10, 30, 14); g.stroke();
+  g.fillStyle = 'rgba(90,90,100,0.45)';
+  for (let i = 0; i < 4; i++) { g.beginPath(); H.circ(g, 8 + i * 9, -60 - i * 12, 9 + i * 3); g.fill(); }
+  g.restore();
+  // cave mouth (Dream Den)
+  g.save(); g.translate(700, 160);
+  g.beginPath(); H.wobble(g, 0, 0, 90, 46, U.rng(31), 10, 0.15);
+  g.fillStyle = H.vol(g, 0, 0, 90, 46, '#7a7488', 0.25, -0.35); g.fill(); g.lineWidth = 2.4; g.strokeStyle = OUT; g.stroke();
+  g.beginPath(); g.moveTo(-30, 18); g.bezierCurveTo(-32, -22, 32, -22, 30, 18); g.closePath();
+  g.fillStyle = '#120a1c'; g.fill(); g.stroke();
+  Art.Props.crystal(g, -52, 22, 0.9, rng, null, { col: '#7fd8ff' });
+  Art.Props.crystal(g, 50, 18, 0.8, rng, null, { col: '#c9a2ff' });
+  g.restore();
+  // meadow flowers (Tranquil Grove)
   for (let i = 0; i < 40; i++) {
-    const x = 250 + rng.range(-110, 110), y = 480 + rng.range(-60, 60);
+    const x = 240 + rng.range(-110, 110), y = 500 + rng.range(-60, 60);
     g.fillStyle = rng.pick(['#ffffff', '#ffe04a', '#ff8fb8']);
     g.beginPath(); H.circ(g, x, y, 2.4); g.fill();
   }
-  // scattered trees
-  for (let i = 0; i < 30; i++) {
-    const x = rng.range(150, 1150), y = rng.range(150, 600);
-    if (U.dist(x, y, 860, 520) < 140) continue;
+  // scattered trees away from the biome regions
+  const busy: number[][] = [[730, 575, 140], [1090, 620, 200], [1145, 300, 150], [1010, 175, 120], [700, 160, 120], [850, 340, 130]];
+  for (let i = 0; i < 40; i++) {
+    const x = rng.range(150, 1150), y = rng.range(150, 620);
+    if (busy.some(([bx, by, br]) => U.dist(x, y, bx, by) < br)) continue;
     tree(g, x, y, rng.range(0.6, 0.9), '#4f9a3a');
   }
   g.restore();
   // onion landing site & giant objects
   Art.drawOnion(g, 120, 470, 0.5, '#e8392c', 0);
-  Art.Props.bottleCap(g, 700, 610, 1.2);
-  Art.Props.can(g, 600, 200, 1);
+  Art.Props.bottleCap(g, 470, 610, 1.2);
+  Art.Props.can(g, 300, 250, 1);
   // dotted trail between levels
   const pts = PTD.LEVELS.map((l: any) => l.mapPos);
   g.setLineDash([2, 10]);
@@ -84,7 +117,7 @@ export function paintMap(): HTMLCanvasElement {
   g.stroke();
   g.setLineDash([]);
   // compass
-  g.save(); g.translate(1170, 600);
+  g.save(); g.translate(96, 150);
   g.beginPath(); H.circ(g, 0, 0, 40); g.fillStyle = 'rgba(255,246,220,0.85)'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = '#6b4424'; g.stroke();
   for (let i = 0; i < 4; i++) {
     g.save(); g.rotate((i * Math.PI) / 2);
@@ -140,18 +173,18 @@ export function renderMap(ctx: CanvasRenderingContext2D) {
 }
 
 export function makeDemo(): any {
-  const g = new PTD.Game(PTD.LEVELS[0], { difficulty: 'casual', seen: { red: 1, yellow: 1, blue: 1, winged: 1, olimar: 1, purple: 1, white: 1 } });
+  const g = new PTD.Game(PTD.LEVELS[0], { difficulty: 'casual', mods: {}, heroXp: 0, heroSkills: {}, seen: { red: 1, yellow: 1, blue: 1, winged: 1, olimar: 1, purple: 1, white: 1 } });
   g.demo = true;
   g.gold = 99999;
   g.initUI();
   const wasMuted = PTD.Audio.muted;
   PTD.Audio.muted = true;
-  const picks = [['groink1', 1], ['den2', 3], ['hog2', 4], ['cannon1', 6], ['groink3', 8], ['snitch', 2], ['withering', 9]];
+  const picks = [['groink1', 1], ['den2', 3], ['hog2', 4], ['cannon1', 6], ['groink3', 8], ['snitch', 2], ['withering', 9], ['beetle2', 5]];
   for (const [id, i] of picks) {
     const s = g.spots[Number(i) % g.spots.length];
     if (!s || s.tower) continue;
     const fam = PTD.TOWERS[id].family;
-    const base = { groink: 'groink1', den: 'den1', hog: 'hog1', cannon: 'cannon1' }[fam];
+    const base = ({ groink: 'groink1', den: 'den1', hog: 'hog1', cannon: 'cannon1', beetle: 'beetle1' } as Record<string, string>)[fam];
     g.build(s, base);
     let t = s.tower;
     const chain: string[] = [];
@@ -209,7 +242,7 @@ export function drawAlmanacPreview(cv: HTMLCanvasElement, en: any, t: number) {
   g.translate(110, 150);
   const [cat, id] = en.por.split(':');
   if (cat === 'cre') {
-    const fit: Record<string, number> = { manatlegs: 1.35, snitch: 1.5, puffy: 1.5, decorated: 1.6, groink: 1.9, fiery: 1.9, withering: 1.9, larva: 1.9, wolly: 1.9 };
+    const fit: Record<string, number> = { manatlegs: 1.35, snitch: 1.5, puffy: 1.5, decorated: 1.6, groink: 1.9, fiery: 1.9, withering: 1.9, larva: 1.9, wolly: 1.9, anode: 1.7, dweevil: 1.6, arachnode: 1.2 };
     const f = fit[id] || 1.7;
     g.scale(f, f);
     if (id === 'snitch') g.translate(0, 30);
@@ -230,6 +263,7 @@ export function drawAlmanacPreview(cv: HTMLCanvasElement, en: any, t: number) {
   } else if (cat === 'cap') {
     const s = Art.CAPT[id].scale;
     g.scale(2.2 / Math.sqrt(s), 2.2 / Math.sqrt(s));
+    if (Art.CAPT[id].custom) g.translate(-8, 0);
     Art.drawCaptain(g, id, Math.floor(t / 2.5) % 2 ? 'front' : 'side', ph, 'walk');
   } else if (cat === 'spell') {
     if (id === 'snagret') {

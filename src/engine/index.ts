@@ -4,9 +4,15 @@ import './art-core';
 import './art/art-enemies.js';
 import './art/art-creatures.js';
 import './art/art-world.js';
+import './art/art-biomes.js';
+import './art/art-creatures-extra.js';
 import './data.js';
 import './levels.js';
+import './levels-extra.js';
+import './progress.js';
 import './game.js';
+import './electric.js';
+import './biomes.js';
 import './render.js';
 import './hud.js';
 

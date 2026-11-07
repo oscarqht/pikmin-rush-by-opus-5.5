@@ -194,3 +194,68 @@ html, body {
 #loading.hide { opacity: 0; pointer-events: none; }
 .spinner { width: 2.4em; height: 2.4em; border-radius: 50%; border: 0.3em solid #5aa53a; border-top-color: #ffe36a; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- expansion: map buttons ---------- */
+.map-right { display: flex; gap: 0.5em; align-items: center; }
+.btn .badge {
+  display: inline-block; margin-left: 0.4em; padding: 0 0.4em; border-radius: 0.7em; font-size: 0.8em;
+  background: #ffd23a; color: #3a1a08; -webkit-text-stroke: 0; box-shadow: 0 0.1em 0 #2e1a0c; animation: pulse 1.1s ease-in-out infinite;
+}
+.btn:disabled { filter: grayscale(0.8) brightness(0.8); cursor: default; transform: none; }
+.brief-text p.hazard { color: #ffd38a; background: rgba(46,26,12,0.35); border-radius: 0.5em; padding: 0.3em 0.5em; font-size: 0.92em; }
+.end-hero { font-weight: 800; color: #e2ccff; margin: -0.4em 0 0.6em; }
+.end-hero b { color: #ffe36a; }
+.end-hint { font-weight: 700; font-size: 0.85em; opacity: 0.85; margin: -0.3em 0 0.8em; }
+
+/* ---------- expansion: star upgrade tree ---------- */
+.upgrades { width: 72em; }
+.upg-head { display: flex; align-items: center; justify-content: space-between; gap: 1em; margin-bottom: 0.7em; }
+.upg-stars { font-family: 'Lilita One', sans-serif; font-size: 1.6em; color: #7a3f12; }
+.upg-stars i { font-style: normal; color: #ffd23a; -webkit-text-stroke: 0.05em #2e1a0c; }
+.upg-note { flex: 1; font-weight: 800; color: #6b4424; }
+.upg-tracks { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.6em; }
+.upg-track { display: flex; flex-direction: column; gap: 0.35em; background: rgba(122,74,36,0.1); border-radius: 0.7em; padding: 0.5em; }
+.upg-title { display: flex; align-items: center; gap: 0.4em; min-height: 3.6em; }
+.upg-title b { display: block; font-family: 'Lilita One', sans-serif; font-weight: normal; color: #7a3f12; font-size: 1.05em; line-height: 1.05; }
+.upg-title small { font-weight: 800; color: #8a6a4a; font-size: 0.75em; }
+.upg-por { width: 3.2em; height: 3.2em; flex: none; }
+.upg-rank {
+  display: flex; flex-direction: column; align-items: stretch; text-align: left; gap: 0.1em; cursor: pointer;
+  border-radius: 0.55em; padding: 0.35em 0.45em; border: 0.12em solid rgba(107,68,36,0.35); background: rgba(255,255,255,0.35);
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.78em; color: #6b5a48; min-height: 4.4em;
+}
+.upg-rank .upg-cost { font-family: 'Lilita One', sans-serif; font-size: 1.15em; color: #8a7a68; }
+.upg-rank.owned { background: linear-gradient(#c6f08a, #8fd45a); border-color: #3f7f2a; color: #24400f; }
+.upg-rank.owned .upg-cost { color: #2f6a1f; }
+.upg-rank.next { border-style: dashed; }
+.upg-rank.can { background: #fff6d0; border: 0.14em solid #e9a020; color: #5a3214; box-shadow: 0 0 0.6em rgba(255,210,58,0.7); }
+.upg-rank.can .upg-cost { color: #c07a10; }
+.upg-rank.can:hover { filter: brightness(1.06); transform: translateY(-0.06em); }
+.upg-rank:disabled { cursor: default; }
+.upg-foot { margin-top: 0.6em; text-align: center; font-weight: 800; font-size: 0.85em; color: #6b4424; }
+
+/* ---------- expansion: hero screen ---------- */
+.hero-panel { width: 60em; }
+.hero-top { display: flex; gap: 1em; align-items: center; }
+.hero-por { width: 7em; height: 7em; flex: none; }
+.hero-info { flex: 1; }
+.hero-lv { font-family: 'Lilita One', sans-serif; font-size: 1.6em; color: #7a3f12; }
+.hero-xp { position: relative; height: 1.3em; border-radius: 0.7em; background: rgba(60,30,80,0.25); border: 0.12em solid #4a2a6a; overflow: hidden; margin: 0.2em 0 0.4em; }
+.hero-xp-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(#d9b8ff, #8a5ac8); }
+.hero-xp span { position: relative; display: block; text-align: center; font-weight: 900; font-size: 0.8em; color: #2a1640; line-height: 1.6em; }
+.hero-stats { display: flex; gap: 0.5em; flex-wrap: wrap; }
+.hero-stats span { background: rgba(122,74,36,0.15); border-radius: 0.4em; padding: 0.1em 0.5em; font-weight: 800; font-size: 0.9em; }
+.hero-note { margin-top: 0.4em; font-weight: 700; font-size: 0.85em; color: #6b4424; }
+.hero-points { display: flex; justify-content: space-between; align-items: center; margin: 0.8em 0 0.5em; font-weight: 800; font-size: 1.1em; color: #5a3214; }
+.hero-points b { font-family: 'Lilita One', sans-serif; color: #8a5ac8; font-size: 1.3em; }
+.hero-skills { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6em; }
+.hero-skill { display: flex; flex-direction: column; gap: 0.3em; background: rgba(122,74,36,0.1); border-radius: 0.7em; padding: 0.6em; }
+.hs-head { display: flex; justify-content: space-between; align-items: center; }
+.hs-head b { font-family: 'Lilita One', sans-serif; font-weight: normal; color: #7a3f12; font-size: 1.15em; }
+.hs-pips { display: flex; gap: 0.2em; }
+.hs-pips i { width: 0.7em; height: 0.7em; border-radius: 50%; border: 0.1em solid #4a2a6a; background: rgba(255,255,255,0.5); }
+.hs-pips i.on { background: #8a5ac8; }
+.hero-skill p { margin: 0; font-weight: 700; font-size: 0.82em; line-height: 1.3; }
+.hero-skill ol { margin: 0; padding-left: 1.2em; font-weight: 700; font-size: 0.78em; color: #8a7a68; flex: 1; }
+.hero-skill li.on { color: #2f6a1f; }
+.hero-skill li.next { color: #5a3214; }

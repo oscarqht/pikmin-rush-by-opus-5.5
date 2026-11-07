@@ -415,7 +415,7 @@
     });
   };
 
-  const FAMCOL = (Art.FAMCOL = { groink: '#f0902a', den: '#d8322a', hog: '#9d4fd6', cannon: '#3fae4f' });
+  const FAMCOL = (Art.FAMCOL = { groink: '#f0902a', den: '#d8322a', hog: '#9d4fd6', cannon: '#3fae4f', beetle: '#2fa8e6' });
 
   function banner(g, x, y, col, h) {
     g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - h); g.lineWidth = 3.4; g.strokeStyle = OUT; g.stroke(); g.lineWidth = 1.8; g.strokeStyle = '#c9a36a'; g.stroke();
@@ -723,12 +723,12 @@
       Art.drawPikmin(g, type, +tier || 2, 'front', 0, 'idle');
     } else if (cat === 'cap') {
       const s = Art.CAPT[id].scale;
-      g.translate(0, r * 1.25); g.scale(k * 1.15 / Math.sqrt(s), k * 1.15 / Math.sqrt(s));
+      g.translate(Art.CAPT[id].custom ? -r * 0.3 : 0, r * (Art.CAPT[id].custom ? 0.85 : 1.25)); g.scale(k * 1.15 / Math.sqrt(s), k * 1.15 / Math.sqrt(s));
       Art.drawCaptain(g, id, 'front', 0, 'idle');
     } else if (cat === 'cre') {
       const C = Art.CRE[id];
-      const fit = { groink: 1.05, manatlegs: 0.62, snitch: 0.85, fiery: 1.05, withering: 1.05, puffy: 0.8, larva: 1.0, decorated: 0.85, wolly: 1.05 }[id] || 1;
-      g.translate(-r * 0.12, r * 0.72 + (id === 'snitch' ? r * 0.55 : id === 'puffy' ? r * 0.4 : id === 'manatlegs' ? r * 0.25 : 0)); g.scale(k * fit, k * fit);
+      const fit = { groink: 1.05, manatlegs: 0.62, snitch: 0.85, fiery: 1.05, withering: 1.05, puffy: 0.8, larva: 1.0, decorated: 0.85, wolly: 1.05, anode: 0.95, dweevil: 0.85, arachnode: 0.62 }[id] || 1;
+      g.translate(-r * 0.12, r * 0.72 + (id === 'snitch' ? r * 0.55 : id === 'puffy' ? r * 0.4 : id === 'manatlegs' || id === 'arachnode' ? r * 0.25 : 0)); g.scale(k * fit, k * fit);
       C.draw(g, 0, 0, 1);
     } else if (cat === 'borb') {
       const K = Art.BORB[id];
@@ -792,8 +792,10 @@
       g.fillStyle = '#ffcc33'; g.beginPath(); H.circ(g, x, y, 0.9); g.fill();
     }
 
-    // water bodies
+    // water bodies (lava pools in volcanic levels)
     for (const w of lv.water || []) {
+      if (w.lava && Art.paintLava) { Art.paintLava(g, w); continue; }
+      if (w.frozen && Art.paintIcePond) { Art.paintIcePond(g, w); continue; }
       const wr = U.rng(w.x * 7 + w.y);
       const path = (g) => H.wobble(g, w.x, w.y, w.rx, w.ry, U.rng(w.x * 3 + w.y), 14, 0.12);
       g.save();
@@ -881,6 +883,9 @@
       }
     }
 
+    // biome zones painted into the ground (ice, vents, tide-pool beds)
+    if (Art.paintZones) Art.paintZones(g, lv, T, rng);
+
     // ---------- decorations (sorted by y) ----------
     const items = (lv.decor || []).slice().sort((a, b) => a.y - b.y);
     for (const d of items) {
@@ -903,7 +908,8 @@
         case 'stump': P.stump(g, d.x, d.y, d.s); break;
         case 'acorn': P.acorn(g, d.x, d.y, d.s); break;
         case 'reeds': P.reeds(g, d.x, d.y, d.s, r); break;
-        case 'tuft': P.tuft(g, d.x, d.y, d.s, r, T.g2); break;
+        case 'tuft': P.tuft(g, d.x, d.y, d.s, r, T.tuft || T.g2); break;
+        default: if (P[d.k]) P[d.k](g, d.x, d.y, d.s, r, T, d);
       }
     }
 
@@ -914,7 +920,7 @@
 
     // vignette
     const vg = g.createRadialGradient(W / 2, Hh / 2, Hh * 0.45, W / 2, Hh / 2, W * 0.72);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,20,0,0.38)');
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, T.vignette || 'rgba(10,20,0,0.38)');
     g.fillStyle = vg; g.fillRect(0, 0, W, Hh);
     return c;
   };

@@ -5,12 +5,16 @@ interface WorldMapScreenProps {
   onBackToTitle: () => void;
   onSelectLevel: (levelIndex: number) => void;
   onOpenAlmanac: () => void;
+  onOpenUpgrades: () => void;
+  onOpenHero: () => void;
 }
 
 export const WorldMapScreen: React.FC<WorldMapScreenProps> = ({
   onBackToTitle,
   onSelectLevel,
   onOpenAlmanac,
+  onOpenUpgrades,
+  onOpenHero,
 }) => {
   const levels = PTD.LEVELS || [];
   const save = PTD.Save.load();
@@ -24,6 +28,9 @@ export const WorldMapScreen: React.FC<WorldMapScreenProps> = ({
   levels.forEach((lv: any) => {
     totalStars += (save.stars && save.stars[lv.id]) || 0;
   });
+  const starsToSpend = PTD.Progress.starsAvailable();
+  const pointsToSpend = PTD.Progress.pointsAvailable();
+  const heroLevel = PTD.Progress.heroLevel();
 
   const handleNodeClick = (index: number, open: boolean) => {
     PTD.Audio.init();
@@ -84,7 +91,27 @@ export const WorldMapScreen: React.FC<WorldMapScreenProps> = ({
           <span className="star">★</span>{' '}
           <span>{`${totalStars} / ${levels.length * 3}`}</span>
         </div>
-        <button
+        <div className="map-right">
+          <button
+            className="btn small green"
+            onClick={() => {
+              PTD.Audio.play('click');
+              onOpenUpgrades();
+            }}
+          >
+            Upgrades{starsToSpend > 0 && <span className="badge">★{starsToSpend}</span>}
+          </button>
+          <button
+            className="btn small"
+            onClick={() => {
+              PTD.Audio.play('click');
+              onOpenHero();
+            }}
+          >
+            Emperor Lv {heroLevel}
+            {pointsToSpend > 0 && <span className="badge">+{pointsToSpend}</span>}
+          </button>
+          <button
           className="btn small"
           onClick={() => {
             PTD.Audio.play('click');
@@ -93,6 +120,7 @@ export const WorldMapScreen: React.FC<WorldMapScreenProps> = ({
         >
           Piklopedia
         </button>
+        </div>
       </div>
     </div>
   );

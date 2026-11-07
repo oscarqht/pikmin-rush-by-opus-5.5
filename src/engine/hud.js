@@ -109,16 +109,22 @@
     return d.pik ? `pik:${type}.${tier == null ? 2 : tier}` : 'cap:' + type;
   };
 
-  PTD.towerStats = function (id) {
+  /** stat chips for a tower; m = star-tree modifiers for its family (optional) */
+  PTD.towerStats = function (id, m) {
     const d = TW[id];
-    if (d.family === 'den') return [`${d.count} × ${d.hp} HP`, `Bite ${d.dmg[0]}-${d.dmg[1]}`, `Armour ${Math.round(d.armor * 100)}%`];
+    m = m || {};
+    const k = (v) => 1 + (v || 0);
+    if (d.family === 'den') {
+      return [`${d.count} × ${Math.round(d.hp * k(m.hp))} HP`, `Bite ${Math.round(d.dmg[0] * k(m.dmg))}-${Math.round(d.dmg[1] * k(m.dmg))}`, `Armour ${Math.round(Math.min(0.8, d.armor + (m.armor || 0)) * 100)}%`];
+    }
     const out = [];
-    const dmg = `${d.dmg[0]}-${d.dmg[1]}`;
+    const dmg = `${Math.round(d.dmg[0] * k(m.dmg))}-${Math.round(d.dmg[1] * k(m.dmg))}`;
     out.push(d.burst ? `${dmg} ×${d.burst}` : `Damage ${dmg}`);
-    out.push(`Every ${d.rate}s`);
-    out.push(`Range ${d.range}`);
-    if (d.splash) out.push(`Splash ${d.splash}`);
-    out.push(d.dtype === 'phys' ? 'Physical' : d.dtype === 'fire' ? 'Fire' : 'Magic');
+    out.push(`Every ${Math.round((d.rate / k(m.rate)) * 100) / 100}s`);
+    out.push(`Range ${Math.round(d.range * k(m.range))}`);
+    if (d.splash) out.push(`Splash ${Math.round(d.splash * k(m.splash))}`);
+    if (d.chain) out.push(`Chains ×${d.chain + 1 + (m.chain || 0)}`);
+    out.push(d.dtype === 'phys' ? 'Physical' : d.dtype === 'fire' ? 'Fire' : d.dtype === 'elec' ? 'Electric' : 'Magic');
     if (!d.air) out.push('Ground only');
     return out;
   };
@@ -213,11 +219,11 @@
       const b = this.boss;
       const w = 420, x = PTD.W / 2 - w / 2, y = 16;
       UI.plank(ctx, x - 50, y - 6, w + 64, 40, { noNails: true, c1: '#6a3fa0', c2: '#4f2c7a', c3: '#3a1f5a' });
-      Art.blit(ctx, Art.portrait('cap:president', 44), x - 22, y + 14);
+      Art.blit(ctx, Art.portrait('cap:' + b.type, 44), x - 22, y + 14);
       ctx.fillStyle = '#2a1608'; ctx.fillRect(x + 8, y + 12, w - 10, 14);
       ctx.fillStyle = '#b32a1e'; ctx.fillRect(x + 10, y + 14, w - 14, 10);
       ctx.fillStyle = '#ffd23a'; ctx.fillRect(x + 10, y + 14, (w - 14) * Math.max(0, b.hp / b.maxHp), 10);
-      H.text(ctx, 'THE PRESIDENT', x + w / 2, y + 4, 14, '#ffe36a', { lw: 3 });
+      H.text(ctx, b.def.name.toUpperCase(), x + w / 2, y + 4, 14, '#ffe36a', { lw: 3 });
     }
 
     // ---- hero portrait ----
@@ -236,13 +242,23 @@
       ctx.lineWidth = 5; ctx.strokeStyle = '#7ee04a'; ctx.stroke();
       ctx.restore();
       if (h.dead) H.text(ctx, String(Math.ceil(h.respawnT)), x, y, 26, '#ffffff');
+      if (h.xpNext) {
+        ctx.save();
+        ctx.beginPath(); ctx.arc(x, y, r + 8, Math.PI * 0.75, Math.PI * 0.75 + Math.PI * 0.5 * U.clamp(h.xp / h.xpNext, 0, 1));
+        ctx.lineWidth = 3; ctx.strokeStyle = '#c9a2ff'; ctx.stroke();
+        ctx.restore();
+      }
       ctx.beginPath(); H.circ(ctx, x + 28, y + 26, 11); ctx.fillStyle = '#6a3fa0'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = OUT; ctx.stroke();
       H.text(ctx, String(h.level), x + 28, y + 26.5, 14, '#ffe36a', { lw: 3 });
       if (hv || sel) {
         ctx.save(); ctx.globalAlpha = 0.25; ctx.beginPath(); H.circ(ctx, x, y, r); ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();
       }
       ui.buttons.push({ x, y, r, onClick: () => { if (!h.dead) { ui.selected = ui.selected === h ? null : h; ui.menu = null; ui.mode = null; sfx('click'); } } });
-      if (hv) ui.tip = { x: x + 40, y: y - 150, title: `${PTD.HERO.name}  ·  Lv ${h.level}`, lines: [PTD.HERO.desc, `HP ${Math.ceil(h.hp)}/${h.maxHp} · Bite ${Math.round(h.dmg[0] * h.dmgMul)}-${Math.round(h.dmg[1] * h.dmgMul)}`], anchor: 'bl' };
+      if (hv) {
+        const xpLine = h.xpNext ? `XP ${Math.floor(h.xp)}/${h.xpNext} (kept between levels)` : 'Max level!';
+        const sk = PTD.HERO_SKILLS ? PTD.HERO_SKILLS.filter((s) => h.sk[s.id] > 0).map((s) => `${s.name} ${h.sk[s.id]}`).join(', ') : '';
+        ui.tip = { x: x + 40, y: y - 150, title: `${PTD.HERO.name}  ·  Lv ${h.level}`, lines: [PTD.HERO.desc, `HP ${Math.ceil(h.hp)}/${h.maxHp} · Bite ${Math.round(h.dmg[0] * h.dmgMul)}-${Math.round(h.dmg[1] * h.dmgMul)}`, xpLine].concat(sk ? ['Skills: ' + sk] : ['Spend skill points on the world map.']), anchor: 'bl' };
+      }
     }
 
     // ---- spells ----
@@ -272,7 +288,7 @@
       ui.buttons.push({ x: s.x, y, r, onClick: () => this.toggleSpell(s.id) });
       if (hv) {
         const S = PTD.SPELLS[s.id];
-        ui.tip = { x: s.x + 30, y: y - 120, title: S.name, lines: [S.desc, `Cooldown ${S.cd}s`], anchor: 'bl' };
+        ui.tip = { x: s.x + 30, y: y - 120, title: S.name, lines: [S.desc, `Cooldown ${sp.max}s`], anchor: 'bl' };
       }
     }
 
@@ -286,7 +302,7 @@
     if (ui.mode === 'snagret' || ui.mode === 'reinforce') {
       const valid = ui.mode === 'snagret' || this.lv.distToPath(mx, my) <= 50;
       ctx.save();
-      const r = ui.mode === 'snagret' ? PTD.SPELLS.snagret.radius : 26;
+      const r = ui.mode === 'snagret' ? this.snagretRadius() : 26;
       ctx.beginPath(); ctx.ellipse(mx, my, r, r * 0.8, 0, 0, TAU);
       ctx.fillStyle = valid ? 'rgba(255,230,120,0.18)' : 'rgba(255,80,80,0.18)'; ctx.fill();
       ctx.setLineDash([7, 5]); ctx.lineDashOffset = -this.time * 30;
@@ -295,7 +311,7 @@
       this.banner(ctx, ui.mode === 'snagret' ? 'Click to summon the Snagret!' : 'Click on the trail to send reinforcements');
     } else if (ui.mode === 'rally') {
       const t = ui.menu && ui.menu.tower;
-      const valid = t && this.lv.distToPath(mx, my) <= 40 && ((mx - t.x) ** 2 + ((my - t.y) / 0.8) ** 2) <= t.def.range ** 2;
+      const valid = t && this.lv.distToPath(mx, my) <= 40 && ((mx - t.x) ** 2 + ((my - t.y) / 0.8) ** 2) <= this.towerRange(t) ** 2;
       Art.blit(ctx, Art.icon('rally', 28), mx + 4, my - 12, false, 1, valid ? 1 : 0.45);
       this.banner(ctx, 'Click on the trail inside the range to set the rally point');
     } else if (ui.selected === h && !h.dead) {
@@ -322,6 +338,9 @@
         ui.buttons.push({ rect: [x, y, 250, 92], onClick: () => { ui.newEnemy = null; } });
       }
     }
+
+    // ---- biome event banner ----
+    if (this.drawBiomeBanner && !ui.mode) this.drawBiomeBanner(ctx);
 
     // ---- tooltip ----
     if (ui.tip) this.renderTip(ctx, ui.tip);
@@ -388,6 +407,9 @@
       name = (d.pik ? PTD.TIER.names[sel.tier] + ' ' : '') + d.name;
       stats = [`HP ${Math.ceil(sel.hp)}/${sel.maxHp}`, `Armour ${Math.round((d.armor || 0) * 100)}%`, `Magic res ${Math.round((d.mres || 0) * 100)}%`, `Lives ${d.lives}`];
       if (d.flying) stats.push('Flying');
+      if (d.elecImmune) stats.push('Shockproof');
+      if (d.unblockable) stats.push('Unblockable');
+      if (sel.rallyT > 0) stats.push('Rallied');
     } else return;
     const w = 470, x = PTD.W / 2 - w / 2, y = PTD.H - 62;
     UI.plank(ctx, x, y, w, 54, { noNails: true });
@@ -406,38 +428,44 @@
     const items = [];
     const R = 58;
     const at = (deg) => ({ x: m.cx + Math.cos((deg * Math.PI) / 180) * R, y: m.cy + Math.sin((deg * Math.PI) / 180) * R * 0.92 });
+    const dark = (x, y) => (this.inDark && this.inDark(x, y) ? ['In darkness: range -25%.'] : []);
     if (m.spot && !m.tower) {
-      const angs = [-135, -45, 135, 45];
+      const n = PTD.BUILD_LIST.length;
+      const angs = n === 5 ? [-90, -18, 54, 126, 198] : [-135, -45, 135, 45];
       PTD.BUILD_LIST.forEach((id, i) => {
         const d = TW[id];
         const p = at(angs[i]);
+        const cost = this.towerCost(id);
         items.push({
-          ...p, kind: 'build', id, cost: d.cost, ok: this.gold >= d.cost, portrait: PTD.towerPortrait(id), preview: id,
-          tip: { title: d.name, lines: [d.desc], stats: PTD.towerStats(id) },
+          ...p, kind: 'build', id, cost, ok: this.gold >= cost, portrait: PTD.towerPortrait(id), preview: id,
+          tip: { title: d.name, lines: [d.desc].concat(dark(m.spot.x, m.spot.y)), stats: PTD.towerStats(id, this.fam(d.family)) },
           act: () => { if (this.build(m.spot, id)) this.closeMenu(); },
         });
       });
     } else if (m.tower) {
       const t = m.tower;
       const nx = t.def.next;
+      const fm = this.fam(t.family);
       if (nx.length === 1) {
         const d = TW[nx[0]];
+        const cost = this.towerCost(nx[0]);
         items.push({
-          ...at(-90), kind: 'upgrade', id: nx[0], cost: d.cost, ok: this.gold >= d.cost, icon: 'upgrade', preview: nx[0],
-          tip: { title: 'Upgrade: ' + d.name, lines: [d.desc], stats: PTD.towerStats(nx[0]) },
+          ...at(-90), kind: 'upgrade', id: nx[0], cost, ok: this.gold >= cost, icon: 'upgrade', preview: nx[0],
+          tip: { title: 'Upgrade: ' + d.name, lines: [d.desc].concat(dark(t.x, t.y)), stats: PTD.towerStats(nx[0], fm) },
           act: () => { if (this.upgrade(t, nx[0])) this.closeMenu(); },
         });
       } else if (nx.length === 2) {
         [-128, -52].forEach((deg, i) => {
           const d = TW[nx[i]];
+          const cost = this.towerCost(nx[i]);
           items.push({
-            ...at(deg), kind: 'upgrade', id: nx[i], cost: d.cost, ok: this.gold >= d.cost, portrait: PTD.towerPortrait(nx[i]), preview: nx[i], elite: true,
-            tip: { title: d.name, lines: [d.desc], stats: PTD.towerStats(nx[i]) },
+            ...at(deg), kind: 'upgrade', id: nx[i], cost, ok: this.gold >= cost, portrait: PTD.towerPortrait(nx[i]), preview: nx[i], elite: true,
+            tip: { title: d.name, lines: [d.desc], stats: PTD.towerStats(nx[i], fm) },
             act: () => { if (this.upgrade(t, nx[i])) this.closeMenu(); },
           });
         });
       } else {
-        items.push({ ...at(-90), kind: 'max', icon: 'star', ok: true, tip: { title: t.def.name, lines: ['Fully evolved!', t.def.desc], stats: PTD.towerStats(t.id) }, act: () => {} });
+        items.push({ ...at(-90), kind: 'max', icon: 'star', ok: true, tip: { title: t.def.name, lines: ['Fully evolved!', t.def.desc].concat(dark(t.x, t.y)), stats: PTD.towerStats(t.id, fm) }, act: () => {} });
       }
       const sv = this.sellValue(t);
       items.push({
